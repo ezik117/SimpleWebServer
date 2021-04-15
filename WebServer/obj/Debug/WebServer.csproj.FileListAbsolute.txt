@@ -1,0 +1,7 @@
+D:\PROJECTS\CPP\021. Web server\WebServer\bin\Debug\WebServer.exe.config
+D:\PROJECTS\CPP\021. Web server\WebServer\bin\Debug\WebServer.exe
+D:\PROJECTS\CPP\021. Web server\WebServer\bin\Debug\WebServer.pdb
+D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.csprojAssemblyReference.cache
+D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.csproj.CoreCompileInputs.cache
+D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.exe
+D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.pdb
