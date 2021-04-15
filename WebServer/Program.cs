@@ -9,8 +9,7 @@ namespace WebServer
 
             WebServerV1 www = new WebServerV1();
             www.responseCodePage = "windows-1251";
-            www.AddRoute("/", routes.Index);
-            www.AddRoute("/a", routes.a);
+            www.AddRoute("/", RouteFunctions.Index);
 
             Console.WriteLine("Ready...");
 
@@ -29,36 +28,5 @@ namespace WebServer
         }
     }
 
-    static class routes
-    {
-        public static string Index(RequestContext context) // Route: "/"
-        {
-            if (context.Method == RequestMethod.GET)
-            {
-                string user = context.session.Get("user", "unknown");
-                if (user == "unknown") context.session.Set("user", "Андрей");
-                return $@"<HTML><BODY>
-                            Route: '/'<BR>
-                            User: {user}
-                    <BODY></HTML>";
-            }
-
-            return "";
-        }
-
-        public static string a(RequestContext context) // Route: "/a"
-        {
-            if (context.Method == RequestMethod.GET)
-            {
-                string user = context.session.Get("user", "unknown");
-                return $@"<HTML><BODY>
-                            Route: '/a'<BR>
-                            User: {user}
-                    <BODY></HTML>";
-            }
-
-            return "";
-        }
-    }
 }
  

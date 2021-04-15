@@ -20,14 +20,14 @@ using System.Web.Script.Serialization;
 namespace WebServer
 
 {
-    class TTemplateParser
+    class TemplateParser
     {
         /// <summary>
         /// Конструктор. Создает экземпляр объекта TEvaluateExpression.
         /// Опционально можно передать словарь с готовым набором заполненных переменных.
         /// </summary>
         /// <param name="values"></param>
-        public TTemplateParser(Dictionary<string, object> extValues = null)
+        public TemplateParser(Dictionary<string, object> extValues = null)
         {
             this.extVals = extValues;
             this.intVals = new Dictionary<string, object>();
@@ -421,6 +421,27 @@ namespace WebServer
             }
         }
 
+        /// <summary>
+        /// Конвертирует строку из одной кодировки в другую.
+        /// </summary>
+        /// <param name="text">Строка для перекодирования.</param>
+        /// <param name="fromEncodingStr">Кодировка исходной строки.</param>
+        /// <param name="toEncodingStr">Требуемая кодировка.</param>
+        /// <returns>Перекодированная строка.</returns>
+        public static string ConvertString(string text, string fromEncodingStr, string toEncodingStr)
+        {
+            try
+            {
+                Encoding fromEnc = System.Text.Encoding.GetEncoding(fromEncodingStr);
+                Encoding toEnc = System.Text.Encoding.GetEncoding(toEncodingStr);
+                byte[] bytes = fromEnc.GetBytes(text);
+                return toEnc.GetString(bytes);
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
 
         /// <summary>
         /// Генератор для функции RANGE(from, to, step)
