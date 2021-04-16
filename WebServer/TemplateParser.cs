@@ -130,13 +130,17 @@ namespace WebServer
         /// </summary>
         /// <param name="template">Строка с шаблоном</param>
         /// <param name="data">Словарь с переменными</param>
+        /// <param name="fileEncoding">Кодировка теста файлов, подгружаемых с помощью команды INCLUDE.</param>
         /// <returns>Обработанный шаблон.</returns>        
-        public string ParseFromString(string template, Dictionary<string, object> data = null)
+        public string ParseFromString(string template, Dictionary<string, object> data = null, Encoding fileEncoding = null)
         {
             if (data != null)
             {
                 this.extVals = data;
             }
+
+            // проверим шаблон на INCLUDE и заполним встаками из файлов
+            template = ParseIncludes(template, 0, fileEncoding);
 
             try
             {
@@ -419,6 +423,60 @@ namespace WebServer
             {
                 return ex.Message;
             }
+        }
+
+        /// <summary>
+        /// Собирает шаблон с учетом вложенных подшаблонов (загрузка из файла).
+        /// Обработка иных служебных команд за исключением {% INCLUDE '' %} не производится.
+        /// Максимальная глубина вложенности 10 уровней.
+        /// В слуае, если файл на который ссылается INCLUDE не существует, выводится ошибка.
+        /// </summary>
+        /// <param name="template">Текст шаблона.</param>
+        /// <param name="stopLevel">Для первого вызова должно быть равно 0 (значение по умолчанию).</param>
+        /// <returns>Строка полностью собранного шаблона.</returns>
+        private string ParseIncludes(string template, int stopLevel = 0, Encoding fileEncoding = null)
+        {
+            // проверка на максимальную глубину
+            if (stopLevel == 10) return "";
+
+            int lastBlockStartPosition = 0;
+            string result = "";
+
+            MatchCollection mm = Regex.Matches(template, @"{[{|%]\s*INCLUDE\s*'(.+?)'\s*[}|%]}");
+            foreach (Match m in mm)
+            {
+                // предыдущий кусок текста
+                result += template.Substring(lastBlockStartPosition, m.Index - lastBlockStartPosition);
+                lastBlockStartPosition = m.Index + m.Length;
+                if (!File.Exists(m.Groups[1].Value))
+                {
+                    return $"<-- ERROR: FILE IS NOT EXISTS '{m.Value}' -->";
+                }
+
+                try
+                {
+                    if (fileEncoding == null)
+                    {
+                        result += ParseIncludes(File.ReadAllText(m.Groups[1].Value, Encoding.UTF8), ++stopLevel, fileEncoding);
+                    }
+                    else
+                    {
+                        result += ParseIncludes(File.ReadAllText(m.Groups[1].Value, fileEncoding), ++stopLevel, fileEncoding);
+                    }
+                }
+                catch
+                {
+                    return $"<-- ERROR: CANNOT READ TEXT FROM FILE '{m.Value}' -->";
+                }
+            }
+
+            if (lastBlockStartPosition < template.Length)
+            {
+                // завершающий кусок текста
+                result += template.Substring(lastBlockStartPosition, template.Length - lastBlockStartPosition);
+            }
+
+            return result;
         }
 
         /// <summary>

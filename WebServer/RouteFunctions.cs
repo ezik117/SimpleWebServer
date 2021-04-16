@@ -42,6 +42,7 @@ namespace WebServer
                 pcInfo.Add("CPU Manufacturer", GetWmi_SingleValue("Manufacturer", components));
 
                 data.Add("pcInfo", pcInfo);
+                data.Add("date", DateTime.Now.ToString());
 
                 TemplateParser tp = new TemplateParser(data);
                 return tp.ParseFromFile(@"..\..\index.html", data, Encoding.UTF8);

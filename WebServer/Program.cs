@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Text.RegularExpressions;
+using System.Collections.Generic;
 
 namespace WebServer
 {
@@ -6,12 +8,11 @@ namespace WebServer
     {
         static void Main(string[] args)
         {
-
             WebServerV1 www = new WebServerV1();
             www.responseCodePage = "windows-1251";
             www.AddRoute("/", RouteFunctions.Index);
 
-            Console.WriteLine("Ready...");
+            Console.WriteLine("Ready... Press 'Q' to exit.");
 
             ConsoleKeyInfo k = Console.ReadKey(true);
             while (k.Key != ConsoleKey.Q)
