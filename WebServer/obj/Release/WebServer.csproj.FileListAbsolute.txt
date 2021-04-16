@@ -1,0 +1,6 @@
+D:\PROJECTS\CPP\021. Web server\WebServer\bin\Release\WebServer.exe.config
+D:\PROJECTS\CPP\021. Web server\WebServer\bin\Release\WebServer.exe
+D:\PROJECTS\CPP\021. Web server\WebServer\bin\Release\WebServer.pdb
+D:\PROJECTS\CPP\021. Web server\WebServer\obj\Release\WebServer.csproj.CoreCompileInputs.cache
+D:\PROJECTS\CPP\021. Web server\WebServer\obj\Release\WebServer.exe
+D:\PROJECTS\CPP\021. Web server\WebServer\obj\Release\WebServer.pdb

@@ -67,7 +67,8 @@ namespace WebServer
 
             // запустим сервер
             stopHttp = false;
-            webSrv.Prefixes.Add($"http://localhost:{port}/");
+            //webSrv.Prefixes.Add($"http://localhost:{port}/");
+            webSrv.Prefixes.Add($"http://*:{port}/");
             webSrv.Start();
 
             // запустим поток обработки клиентских запросов
