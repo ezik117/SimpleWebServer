@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Net;
 using System.Web;
+using System.Reflection;
+using System.Resources;
+using System.Linq;
 
 namespace WebServer
 {
@@ -46,6 +49,20 @@ namespace WebServer
         public double sessionDuration;
 
         /// <summary>
+        /// Задает место расположения статического контента, в случае если он является внешним,
+        /// т.е. находится в файлах. Поддерживает относительные пути. По умолчанию текущая директория.
+        /// </summary>
+        public string staticContent;
+
+        /// <summary>
+        /// Показывает откуда брать статические файлы. Если установлен в True, то на все запросы файлов (кроме
+        /// HTML страниц, которые обрарабатываются в route-функциях, где напрямую укзавается метод
+        /// парсинга в TemplateParser) будут искаться объекты в Embedded Resources. Если False,
+        /// то файлы ищутся в директории staticContent. По умолчанию равен False.
+        /// </summary>
+        public bool useEmbeddedResources;
+
+        /// <summary>
         /// Объявление определения указателя на функцию, которая будет выполнена, когда получен http запрос
         /// </summary>
         public delegate string RouteFunction(RequestContext context);
@@ -58,24 +75,25 @@ namespace WebServer
         /// <summary>
         /// Конструктор. Запускает веб сервер на прослушивание и обработку запросов.
         /// </summary>
-        /// <param name="port">Порт, на котором будем слушать запросы. По умолчанию равен "8080".</param>
-        public WebServerV1(string port="8080")
+        /// <param name="prefix">Префикс для прослушивания. По умолчанию "http://localhost:8080/".</param>
+        public WebServerV1(string prefix = "http://localhost:8080/")
         {
             // зададим параметры
-            responseCodePage = "UTF-8";
-            sessionDuration = 24 * 60;
+            this.responseCodePage = "UTF-8";
+            this.sessionDuration = 24 * 60;
+            this.staticContent = "";
+            this.useEmbeddedResources = false;
 
             // запустим сервер
-            stopHttp = false;
-            //webSrv.Prefixes.Add($"http://localhost:{port}/");
-            webSrv.Prefixes.Add($"http://*:{port}/");
-            webSrv.Start();
+            this.stopHttp = false;
+            this.webSrv.Prefixes.Add(prefix);
+            this.webSrv.Start();
 
             // запустим поток обработки клиентских запросов
-            httpDispatcher = new Thread(Listen);
-            httpDispatcher.Priority = ThreadPriority.AboveNormal;
-            httpDispatcher.IsBackground = true;
-            httpDispatcher.Start();
+            this.httpDispatcher = new Thread(this.Listen);
+            this.httpDispatcher.Priority = ThreadPriority.AboveNormal;
+            this.httpDispatcher.IsBackground = true;
+            this.httpDispatcher.Start();
         }
 
         /// <summary>
@@ -83,9 +101,9 @@ namespace WebServer
         /// </summary>
         public void Stop()
         {
-            stopHttp = true;
-            webSrv.Stop();
-            while (httpDispatcher.IsAlive);
+            this.stopHttp = true;
+            this.webSrv.Stop();
+            while (this.httpDispatcher.IsAlive);
         }
 
         /// <summary>
@@ -93,11 +111,11 @@ namespace WebServer
         /// </summary>
         private void Listen()
         {
-            while (!stopHttp)
+            while (!this.stopHttp)
             {
                 try
                 {
-                    HttpListenerContext ctx = webSrv.GetContext();
+                    HttpListenerContext ctx = this.webSrv.GetContext();
                     new Thread(new ParameterizedThreadStart(ProcessRequest)).Start(ctx); // Priority=Normal
                 }
                 catch { };
@@ -116,18 +134,82 @@ namespace WebServer
             HttpListenerResponse response = ctx.Response;
 
             RequestContext rc = ParseRequest(request);
-            string responseString = ProcessRoute(rc);
-            bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session.sessionId);
 
-            if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId));
+            // вначале проверяется не является ли запрошенный ресурс URL в таблице переходов
+            if (this.routeTable.ContainsKey(rc.Route) && request.Headers["Accept"].Contains("text/html"))
+            {
+                // если да - запускаем парсер
+                string responseString = ProcessRoute(rc);
+                bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session.sessionId);
 
-            byte[] buffer = System.Text.Encoding.GetEncoding(this.responseCodePage).GetBytes(responseString);
+                if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId));
 
-            response.ContentLength64 = buffer.Length;
-            System.IO.Stream output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
+                byte[] buffer = System.Text.Encoding.GetEncoding(this.responseCodePage).GetBytes(responseString);
 
-            output.Close();
+                response.ContentType = "text/html";
+                response.ContentLength64 = buffer.Length;
+                Stream output = response.OutputStream;
+                output.Write(buffer, 0, buffer.Length);
+
+                output.Close();
+            }
+            else
+            {
+                // получим имя запрашиваемого файла с защитой от доступа к ресурсам вне разрешенной папки
+                string file = rc.Route.Replace("..\\", string.Empty).Replace("../", string.Empty).TrimStart('\\', '/');
+                string filename = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                                  this.staticContent,
+                                  file);
+
+                
+                string extension = Path.GetExtension(filename);
+                string embeddedResourceName = $"{Assembly.GetExecutingAssembly().GetName().Name}.Resources.{file}";
+
+                // проверим что запрашиваемый ресурс в списке доступных
+                if (allowedMimeTypes.Keys.Contains(extension))
+                {
+                    try
+                    {
+                        if (!this.useEmbeddedResources && File.Exists(filename))
+                        {
+                            // ищем файл на сервере в доступных для этого папках и передаем
+                            Stream input = new FileStream(filename, FileMode.Open);
+                            response.ContentType = allowedMimeTypes[extension];
+                            response.ContentLength64 = input.Length;
+                            input.CopyTo(response.OutputStream);
+                            input.Close();
+                            response.OutputStream.Close();
+                        }
+                        else if (this.useEmbeddedResources &&
+                                (Assembly.GetExecutingAssembly().GetManifestResourceNames().Where(x => x == embeddedResourceName).Count() > 0))
+                        {
+                            // ищем файл среди встроенные ресурсов
+                            Stream input = Assembly.GetExecutingAssembly().GetManifestResourceStream("WebServer.Resources.http_status_not_found_icon.png");
+                            response.ContentType = allowedMimeTypes[extension];
+                            input.CopyTo(response.OutputStream);
+                            input.Close();
+                        }
+                        else
+                        {
+                            response.StatusCode = (int)HttpStatusCode.NotFound; // вначале всегда код возврата
+                            response.ContentLength64 = 0;
+                            response.OutputStream.Close(); // а в самом конце закрытие потока
+                        }
+                    }
+                    catch
+                    {
+                        response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                        response.ContentLength64 = 0;
+                        response.OutputStream.Close();
+                    }
+                }
+                else
+                {
+                    response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    response.ContentLength64 = 0;
+                    response.OutputStream.Close();
+                }
+            }      
         }
 
         /// <summary>
@@ -185,7 +267,7 @@ namespace WebServer
         /// <param name="function">Функция для выполнения.</param>
         public void AddRoute(string route, RouteFunction function)
         {
-            routeTable.Add(route, function);
+            this.routeTable.Add(route, function);
         }
 
         /// <summary>
@@ -197,13 +279,94 @@ namespace WebServer
         {
             try
             {
-                return routeTable[context.Route]?.Invoke(context);
+                return this.routeTable[context.Route]?.Invoke(context);
             }
             catch
             {
                 return "";
             }
         }
+
+        /// <summary>
+        /// Словарь содержащий разрешенные типы запрашиваемых ресурсов
+        /// </summary>
+        private static IDictionary<string, string> allowedMimeTypes =
+            new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
+                {
+                    {".css", "text/css"},
+                    {".gif", "image/gif"},
+                    {".ico", "image/x-icon"},
+                    {".jpeg", "image/jpeg"},
+                    {".jpg", "image/jpeg"},
+                    {".js", "application/x-javascript"},
+                    {".png", "image/png"}
+                };
+        /*
+                    {".asf", "video/x-ms-asf"},
+                    {".asx", "video/x-ms-asf"},
+                    {".avi", "video/x-msvideo"},
+                    {".bin", "application/octet-stream"},
+                    {".cco", "application/x-cocoa"},
+                    {".crt", "application/x-x509-ca-cert"},
+                    {".css", "text/css"},
+                    {".deb", "application/octet-stream"},
+                    {".der", "application/x-x509-ca-cert"},
+                    {".dll", "application/octet-stream"},
+                    {".dmg", "application/octet-stream"},
+                    {".ear", "application/java-archive"},
+                    {".eot", "application/octet-stream"},
+                    {".exe", "application/octet-stream"},
+                    {".flv", "video/x-flv"},
+                    {".gif", "image/gif"},
+                    {".hqx", "application/mac-binhex40"},
+                    {".htc", "text/x-component"},
+                    {".htm", "text/html"},
+                    {".html", "text/html"},
+                    {".ico", "image/x-icon"},
+                    {".img", "application/octet-stream"},
+                    {".iso", "application/octet-stream"},
+                    {".jar", "application/java-archive"},
+                    {".jardiff", "application/x-java-archive-diff"},
+                    {".jng", "image/x-jng"},
+                    {".jnlp", "application/x-java-jnlp-file"},
+                    {".jpeg", "image/jpeg"},
+                    {".jpg", "image/jpeg"},
+                    {".js", "application/x-javascript"},
+                    {".mml", "text/mathml"},
+                    {".mng", "video/x-mng"},
+                    {".mov", "video/quicktime"},
+                    {".mp3", "audio/mpeg"},
+                    {".mpeg", "video/mpeg"},
+                    {".mpg", "video/mpeg"},
+                    {".msi", "application/octet-stream"},
+                    {".msm", "application/octet-stream"},
+                    {".msp", "application/octet-stream"},
+                    {".pdb", "application/x-pilot"},
+                    {".pdf", "application/pdf"},
+                    {".pem", "application/x-x509-ca-cert"},
+                    {".pl", "application/x-perl"},
+                    {".pm", "application/x-perl"},
+                    {".png", "image/png"},
+                    {".prc", "application/x-pilot"},
+                    {".ra", "audio/x-realaudio"},
+                    {".rar", "application/x-rar-compressed"},
+                    {".rpm", "application/x-redhat-package-manager"},
+                    {".rss", "text/xml"},
+                    {".run", "application/x-makeself"},
+                    {".sea", "application/x-sea"},
+                    {".shtml", "text/html"},
+                    {".sit", "application/x-stuffit"},
+                    {".swf", "application/x-shockwave-flash"},
+                    {".tcl", "application/x-tcl"},
+                    {".tk", "application/x-tcl"},
+                    {".txt", "text/plain"},
+                    {".war", "application/java-archive"},
+                    {".wbmp", "image/vnd.wap.wbmp"},
+                    {".wmv", "video/x-ms-wmv"},
+                    {".xml", "text/xml"},
+                    {".xpi", "application/x-xpinstall"},
+                    {".zip", "application/zip"},
+         */
     }
 
 
@@ -224,9 +387,22 @@ namespace WebServer
         public SessionManager sessionManager; // ссылка на менеджер сессий
     }
 
+    /// <summary>
+    /// Перечисление обрабатываемых методов http
+    /// </summary>
     enum RequestMethod
     {
         GET,
-        POST
+        POST,
+        OPTIONS,
+        HEAD,
+        PUT,
+        PATCH,
+        DELETE,
+        TRACE,
+        CONNECT
     }
+
+    
+
 }
