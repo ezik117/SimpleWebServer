@@ -1,0 +1,48 @@
+﻿<!DOCTYPE html>
+
+<html lang="ru-RU">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="/bootstrap.min.css" rel="stylesheet">
+</head>
+<body style="overflow-x: hidden;">
+    {% INCLUDE 'header.html' %}
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th scope="col">Parameter</th>
+                <th scope="col">Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% FOR row IN pcInfo %}
+            <tr>
+                <td>{{row.Key}}</td>
+                <td>{{row.Value}}</td>
+            </tr>
+            {% ENDFOR %}
+        </tbody>
+    </table>
+
+    <script>
+		function showLogin()
+		{
+			var x = document.getElementById('enterPwd');
+			x.style.right = "0px";
+		}
+		function hideLogin()
+        {
+			var x = document.getElementById('enterPwd');
+			x.style.right = "-205px";
+        }
+        function showWait() {
+            var x = document.getElementById('formElements');
+            x.style.visibility = "hidden";
+            x = document.getElementById('spinner');
+            x.style.display = "block";
+        }
+    </script>
+
+</body>
+</html>

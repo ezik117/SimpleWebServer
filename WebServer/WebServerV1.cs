@@ -65,7 +65,7 @@ namespace WebServer
         /// <summary>
         /// Объявление определения указателя на функцию, которая будет выполнена, когда получен http запрос
         /// </summary>
-        public delegate string RouteFunction(RequestContext context);
+        public delegate ResponseContext RouteFunction(RequestContext context);
 
         /// <summary>
         /// Таблица переходов.
@@ -139,19 +139,32 @@ namespace WebServer
             if (this.routeTable.ContainsKey(rc.Route) && request.Headers["Accept"].Contains("text/html"))
             {
                 // если да - запускаем парсер
-                string responseString = ProcessRoute(rc);
-                bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session.sessionId);
+                ResponseContext userResponse = ProcessRoute(rc);
 
-                if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId));
+                if (userResponse.redirectUrl != "")
+                {
+                    // пользовательская функция вызвала метод перенаправления
+                    bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session.sessionId);
+                    if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId)); // задать куки с номером сессии
 
-                byte[] buffer = System.Text.Encoding.GetEncoding(this.responseCodePage).GetBytes(responseString);
+                    response.Redirect(userResponse.redirectUrl);
+                    response.OutputStream.Close();
+                }
+                else
+                {
+                    // вернем в браузер ответ пользовательской функции
+                    bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session.sessionId);
+                    if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId));
 
-                response.ContentType = "text/html";
-                response.ContentLength64 = buffer.Length;
-                Stream output = response.OutputStream;
-                output.Write(buffer, 0, buffer.Length);
+                    byte[] buffer = System.Text.Encoding.GetEncoding(this.responseCodePage).GetBytes(userResponse.responseString);
 
-                output.Close();
+                    response.ContentType = "text/html";
+                    response.ContentLength64 = buffer.Length;
+                    Stream output = response.OutputStream;
+                    output.Write(buffer, 0, buffer.Length);
+
+                    output.Close();
+                }
             }
             else
             {
@@ -175,8 +188,9 @@ namespace WebServer
                             // ищем файл на сервере в доступных для этого папках и передаем
                             Stream input = new FileStream(filename, FileMode.Open);
                             response.ContentType = allowedMimeTypes[extension];
+                            //input.CopyTo(response.OutputStream);
                             response.ContentLength64 = input.Length;
-                            input.CopyTo(response.OutputStream);
+                            this.CopyStream(input, response.OutputStream);
                             input.Close();
                             response.OutputStream.Close();
                         }
@@ -184,10 +198,13 @@ namespace WebServer
                                 (Assembly.GetExecutingAssembly().GetManifestResourceNames().Where(x => x == embeddedResourceName).Count() > 0))
                         {
                             // ищем файл среди встроенные ресурсов
-                            Stream input = Assembly.GetExecutingAssembly().GetManifestResourceStream("WebServer.Resources.http_status_not_found_icon.png");
+                            Stream input = Assembly.GetExecutingAssembly().GetManifestResourceStream(embeddedResourceName);
                             response.ContentType = allowedMimeTypes[extension];
-                            input.CopyTo(response.OutputStream);
+                            //input.CopyTo(response.OutputStream);
+                            response.ContentLength64 = input.Length;
+                            this.CopyStream(input, response.OutputStream);
                             input.Close();
+                            response.OutputStream.Close();
                         }
                         else
                         {
@@ -212,6 +229,19 @@ namespace WebServer
             }      
         }
 
+        private long CopyStream(Stream input, Stream output)
+        {
+            long copiesBytes = 0;
+            byte[] buffer = new byte[32768];
+            int read;
+            while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                output.Write(buffer, 0, read);
+                copiesBytes += read;
+            }
+            return copiesBytes;
+        }
+
         /// <summary>
         /// Парсинг запроса.
         /// </summary>
@@ -227,7 +257,8 @@ namespace WebServer
                 Route = request.RawUrl.Split('?')[0],
                 sessionManager = this.sm,
                 session = sm.GetSession(request.Cookies["SSID"]?.Value),
-                baseRequest = request
+                baseRequest = request,
+                redirect = ""
             };
 
             if (rc.session == null) rc.session = sm.CreateSession(this.sessionDuration);
@@ -275,7 +306,7 @@ namespace WebServer
         /// </summary>
         /// <param name="context">Контест запроса.</param>
         /// <returns>HTML код который должен быть возвращен пользователю.</returns>
-        private string ProcessRoute(RequestContext context)
+        private ResponseContext ProcessRoute(RequestContext context)
         {
             try
             {
@@ -283,7 +314,7 @@ namespace WebServer
             }
             catch
             {
-                return "";
+                return new ResponseContext();
             }
         }
 
@@ -299,6 +330,7 @@ namespace WebServer
                     {".jpeg", "image/jpeg"},
                     {".jpg", "image/jpeg"},
                     {".js", "application/x-javascript"},
+                    {".map", "text/css"},
                     {".png", "image/png"}
                 };
         /*
@@ -376,15 +408,56 @@ namespace WebServer
     /// </summary>
     class RequestContext
     {
-        // основные параметры
+        // ---- основные параметры
         public RequestMethod Method; // метод: GET, POST...
         public string Route; // запрошенный URL начинающийся с "/"
         public Encoding encoding; // кодировка страницы
         public Dictionary<string, object> values; // словарь параметров запроса
         public SessionData session; // ссылка на объект пользовательской 
-        // расширенные параметры
+        // ---- расширенные параметры
         public HttpListenerRequest baseRequest; // ссылка на базовый объект запроса
         public SessionManager sessionManager; // ссылка на менеджер сессий
+        public string redirect; // если установлен, то ссылка перехода
+        // ---- методы
+        /// <summary>
+        /// Возвращает значение параметра полученного через GET/POST. Данный метод более
+        /// предпочтительней, чем прямой доступ к словарю values.
+        /// </summary>
+        /// <param name="name">Имя параметра.</param>
+        /// /// <param name="defaultValue">Значене по умолчанию, если параметра нет в списке.
+        /// По умолчанию возвращается пустая строка.</param>
+        /// <returns>Значение параметра или пустая строка, если параметр не задан.</returns>
+        public string GetValue(string name, string defaultValue = "")
+        {
+            return (values.ContainsKey(name) ? values[name].ToString() : defaultValue);
+        }
+    }
+
+    /// <summary>
+    /// Определение структуры возвращаемого контекста после обработки пользовательской функцией
+    /// </summary>
+    class ResponseContext
+    {
+        /// <summary>
+        /// Обработанный HTML ответ.
+        /// </summary>
+        public string responseString;
+        /// <summary>
+        /// Если не равен пустой строке, то требуется переход.
+        /// </summary>
+        public string redirectUrl;
+
+        /// <summary>
+        /// Конструктор. Создает возвращаемый класс обработки запроса пользовательской функцией.
+        /// </summary>
+        /// <param name="responseString">Возвращаемый текст HTML.</param>
+        /// <param name="redirectUrl">Адрес перехода. Если установлен, то будет отравлен код 302 с адресом,
+        /// а ResponseString проигнорирована.</param>
+        public ResponseContext(string responseString = "", string redirectUrl = "")
+        {
+            this.redirectUrl = redirectUrl;
+            this.responseString = responseString;
+        }
     }
 
     /// <summary>

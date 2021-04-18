@@ -11,8 +11,10 @@ namespace WebServer
             WebServerV1 www = new WebServerV1();
             www.responseCodePage = "windows-1251";
             www.staticContent = "..\\..\\StaticFiles";
-            www.useEmbeddedResources = false;
+            www.useEmbeddedResources = true;
             www.AddRoute("/", RouteFunctions.Index);
+            www.AddRoute("/login", RouteFunctions.Login);
+            www.AddRoute("/logout", RouteFunctions.Logout);
 
             Console.WriteLine("Ready... Press 'Q' to exit.");
 

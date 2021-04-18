@@ -35,6 +35,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.DirectoryServices.AccountManagement" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
     <Reference Include="System.Web" />
@@ -63,9 +64,12 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="header.html" />
-    <Content Include="index.html" />
+    <EmbeddedResource Include="Resources\header.html" />
+    <EmbeddedResource Include="Resources\index.html" />
+    <EmbeddedResource Include="Resources\bootstrap.min.css" />
+    <EmbeddedResource Include="Resources\Info-icon.png" />
     <EmbeddedResource Include="Resources\http_status_not_found_icon.png" />
+    <EmbeddedResource Include="Resources\bootstrap.min.css.map" />
     <None Include="StaticFiles\http-status-not-found-icon.png" />
   </ItemGroup>
   <ItemGroup>
@@ -73,6 +77,12 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Lock-Lock-icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Lock-Unlock-icon.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

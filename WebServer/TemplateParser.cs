@@ -8,6 +8,7 @@ using System.IO;
 using System.Net;
 using System.Web;
 using System.Web.Script.Serialization;
+using System.Reflection;
 
 
 /*
@@ -54,6 +55,12 @@ namespace WebServer
         private List<_Template_Element> templateElements;
 
         /// <summary>
+        /// Внутренняя переменная для функции ParseFromString. Показывает что при разборе нужно
+        /// использовать встроенные файлы (например, при команде {% INCLUDE '' %}
+        /// </summary>
+        private bool useEmbeddedFiles;
+
+        /// <summary>
         /// Сохраняет строку в указанном файле. Старый файл перезаписывается.
         /// </summary>
         /// <param name="filename">Имя файла.</param>
@@ -86,7 +93,36 @@ namespace WebServer
         /// <returns>Обработанный шаблон.</returns>
         public string ParseFromResource(string resource, Dictionary<string, object> data = null)
         {
-            return this.ParseFromString(resource, data);
+            this.useEmbeddedFiles = true;
+
+            return this.ParseFromString(GetEmbeddedString(resource), data);
+        }
+
+        /// <summary>
+        /// Получает встроенный ресурс как строку. Ресурс должен быть добавлен не через Project->.. properties,
+        /// а через Solution Explorer путем создания папки Resources, добавлением существующих элементов
+        /// и присвоения им свойства BuildAction=EmbeddedResource
+        /// </summary>
+        /// <param name="resource">Имя ресурса (без имени сборки и namespace)</param>
+        /// <returns></returns>
+        private string GetEmbeddedString(string resource)
+        {
+            string ebeddedTemplate;
+            try
+            {
+                
+                string embeddedResourceName = $"{Assembly.GetExecutingAssembly().GetName().Name}.Resources.{resource}";
+                using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(embeddedResourceName))
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    ebeddedTemplate = reader.ReadToEnd();
+                }
+            }
+            catch
+            {
+                ebeddedTemplate = "";
+            }
+            return ebeddedTemplate;
         }
 
         /// <summary>
@@ -98,6 +134,8 @@ namespace WebServer
         /// <returns>Обработанный шаблон.</returns>
         public string ParseFromFile(string filename, Dictionary<string, object> data = null, Encoding encoding = null)
         {
+            this.useEmbeddedFiles = false;
+
             if (data != null)
             {
                 this.extVals = data;
@@ -448,25 +486,42 @@ namespace WebServer
                 // предыдущий кусок текста
                 result += template.Substring(lastBlockStartPosition, m.Index - lastBlockStartPosition);
                 lastBlockStartPosition = m.Index + m.Length;
-                if (!File.Exists(m.Groups[1].Value))
-                {
-                    return $"<-- ERROR: FILE IS NOT EXISTS '{m.Value}' -->";
-                }
 
-                try
+                if (!this.useEmbeddedFiles)
                 {
-                    if (fileEncoding == null)
+                    // обработаем запрос к файлу
+                    if (!File.Exists(m.Groups[1].Value))
                     {
-                        result += ParseIncludes(File.ReadAllText(m.Groups[1].Value, Encoding.UTF8), ++stopLevel, fileEncoding);
+                        return $"<-- ERROR: FILE IS NOT EXISTS '{m.Value}' -->";
                     }
-                    else
+
+                    try
                     {
-                        result += ParseIncludes(File.ReadAllText(m.Groups[1].Value, fileEncoding), ++stopLevel, fileEncoding);
+                        if (fileEncoding == null)
+                        {
+                            result += ParseIncludes(File.ReadAllText(m.Groups[1].Value, Encoding.UTF8), ++stopLevel, fileEncoding);
+                        }
+                        else
+                        {
+                            result += ParseIncludes(File.ReadAllText(m.Groups[1].Value, fileEncoding), ++stopLevel, fileEncoding);
+                        }
+                    }
+                    catch
+                    {
+                        return $"<-- ERROR: CANNOT READ TEXT FROM FILE '{m.Value}' -->";
                     }
                 }
-                catch
+                else
                 {
-                    return $"<-- ERROR: CANNOT READ TEXT FROM FILE '{m.Value}' -->";
+                    // обработаем запрос к встроенному ресурсу
+                    string embeddedTemplate = this.GetEmbeddedString(m.Groups[1].Value);
+
+                    if (embeddedTemplate == string.Empty)
+                    {
+                        return $"<-- ERROR: FILE IS NOT EXISTS '{m.Value}' -->";
+                    }
+
+                    result += ParseIncludes(embeddedTemplate, ++stopLevel, fileEncoding);
                 }
             }
 
@@ -866,7 +921,10 @@ namespace WebServer
                     {
                         // это словарь
                         string key = Regex.Replace(r.data, @"['""]", "");
-                        d = d[key];
+                        if (d.ContainsKey(key))
+                            d = d[key];
+                        else
+                            d = null;
                     }
                     else
                     {
