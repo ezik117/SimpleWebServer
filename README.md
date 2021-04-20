@@ -40,13 +40,15 @@ public void AddRoute(string route, RouteFunction function) | Добавляет 
 
 ```c#
 static void Main(string[] args)
-        {
-            WebServerV1 www = new WebServerV1();
-            www.AddRoute("/", RouteFunctions.Index);
-            Console.WriteLine("Press a key to exit");
-            Console.ReadKey(true);
-            www.Stop();
-        }
+    {
+        WebServerV1 www = new WebServerV1();
+        www.AddRoute("/", RouteFunctions.Index);
+
+        Console.WriteLine("Press a key to exit");
+        Console.ReadKey(true);
+
+        www.Stop();
+    }
 
 ...
 
@@ -57,7 +59,9 @@ static class RouteFunctions
     {
         Dictionary<string, object> data = new Dictionary<string, object>();
         data.Add("date", DateTime.Now.ToString());
+
         TemplateParser tp = new TemplateParser(data);
+        
         return new ResponseContext(tp.ParseFromFile("index.html", data));
     }
 }
