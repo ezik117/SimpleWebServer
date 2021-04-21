@@ -25,7 +25,7 @@ responseCodePage | string | Имя кодовой страницы текста 
 sessionDuration | double | Срок хранения сессий на сервере в минутах. По умолчанию 1 день. (Примечание: данные сессий хранятся в памяти.)
 staticContent | string | Задает место расположения статического контента, в случае если он является внешним, т.е. картинки, файлы css и т.п хранятся в файлах, а не являются встроенным ресурсом (EmbeddedResource). Поддерживает относительные пути вида ("..\\..\\"). Значение по умолчанию - текущая директория.
 useEmbeddedResources | bool | Показывает откуда брать статические файлы. Если установлен в True, то на все запросы файлов (кроме HTML страниц, которые обрарабатываются в route-функциях, где напрямую указывается путь к шаблонам) объекты будут искаться в Embedded Resources. Если False, то файлы ищутся в директории staticContent. По умолчанию равен False.
-values | Dictionary<string, object> | Словарь значений, передаваемых в шаблонизатор.
+variables | Dictionary<string, object> | Словарь значений, передаваемых в шаблонизатор. По умолчанию содержит только одно значение "session" с ключевыми парами сессии.
 
 ### МЕТОДЫ
 
@@ -58,11 +58,11 @@ static class RouteFunctions
     // Route: "/"
     public static ResponseContext Index(RequestContext context)
     {
-        context.values.Add("dateNow", DateTime.Now);
+        context.variables.Add("dateNow", DateTime.Now);
 
         TemplateParser tp = new TemplateParser();
         
-        return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{dateNow}}</BODY></HTML>", context.values));
+        return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{dateNow}}</BODY></HTML>", context.variables));
     }
 }
 
