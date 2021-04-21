@@ -38,7 +38,7 @@ public void AddRoute(string route, RouteFunction function) | Добавляет 
 
 Создание сервера и базовой страницы:
 
-```c#
+```C#
 static void Main(string[] args)
     {
         WebServerV1 www = new WebServerV1();
@@ -58,11 +58,11 @@ static class RouteFunctions
     public static ResponseContext Index(RequestContext context)
     {
         Dictionary<string, object> data = new Dictionary<string, object>();
-        data.Add("date", DateTime.Now.ToString());
+        data.Add("dateNow", DateTime.Now.ToString());
 
         TemplateParser tp = new TemplateParser(data);
         
-        return new ResponseContext(tp.ParseFromFile("index.html", data));
+        return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{dateNow}}</BODY></HTML>", data));
     }
 }
 
