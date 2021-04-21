@@ -15,8 +15,10 @@ namespace WebServer
             www.AddRoute("/", RouteFunctions.Index);
             www.AddRoute("/login", RouteFunctions.Login);
             www.AddRoute("/logout", RouteFunctions.Logout);
+            www.AddRoute("/cmdline", RouteFunctions.Cmdline);
 
             Console.WriteLine("Ready... Press 'Q' to exit.");
+            Console.WriteLine("Usage http://localhost:8080");
 
             ConsoleKeyInfo k = Console.ReadKey(true);
             while (k.Key != ConsoleKey.Q)

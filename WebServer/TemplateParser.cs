@@ -32,6 +32,8 @@ namespace WebServer
         {
             this.extVals = extValues;
             this.intVals = new Dictionary<string, object>();
+            this.enableDebug = false;
+            this.useEmbeddedFiles = false;
 
             this.templateElements = new List<_Template_Element>();
         }
@@ -57,8 +59,15 @@ namespace WebServer
         /// <summary>
         /// Внутренняя переменная для функции ParseFromString. Показывает что при разборе нужно
         /// использовать встроенные файлы (например, при команде {% INCLUDE '' %}
+        /// Устанавливается при вызове функции pareseFromResources
         /// </summary>
         private bool useEmbeddedFiles;
+
+        /// <summary>
+        /// Если установлено как true - то в случае отсутствия ключей или переменных вызывает ошибку.
+        /// По умолчанию равно false.
+        /// </summary>
+        public bool enableDebug;
 
         /// <summary>
         /// Сохраняет строку в указанном файле. Старый файл перезаписывается.
@@ -799,10 +808,13 @@ namespace WebServer
                             outbound.Add(Convert.ToString(x));
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
                         // ошибка. Неизвестное выражение
-                        throw new Exception($"<-- ERROR: UNKNOWN EXPRESSSION '{s}' -->");
+                        if (this.enableDebug)
+                            throw ex;
+                        else
+                            return null;
                     }
                 }
             }
@@ -912,19 +924,34 @@ namespace WebServer
                         }
                         catch
                         {
-                            // ошибка. Нет такого поля
-                            throw new Exception($"<-- ERROR: FIELD '{arrayName}' of value '{r.data}' IS NOT DEFINED -->");
+                            if (this.enableDebug)
+                            {
+                                // ошибка. Нет такого поля
+                                throw new Exception($"<-- ERROR: FIELD '{arrayName}' of value '{r.data}' IS NOT DEFINED -->");
+                            }
+                            else
+                            {
+                                d = null;
+                            }
                         }
                     }
 
                     if (d.GetType().IsGenericType && d.GetType().GetGenericTypeDefinition().IsAssignableFrom(typeof(Dictionary<,>)))
                     {
-                        // это словарь
+                        // это словарь. 
+                        // возвратим значение из словаря, если в словаре нет такого ключа, то возвратим null
                         string key = Regex.Replace(r.data, @"['""]", "");
                         if (d.ContainsKey(key))
                             d = d[key];
+                        else if (this.enableDebug)
+                        {
+                            // ошибка. Нет такого ключа
+                            throw new Exception($"<-- ERROR: KEY '{key}' of value '{r.data}' IS NOT EXIST -->");
+                        }
                         else
+                        {
                             d = null;
+                        }
                     }
                     else
                     {
@@ -966,8 +993,9 @@ namespace WebServer
                 }
             }
 
+            // если возвращаемое значение было равно NULL, то преобразуем его в пустую строку
             if (d == null) d = string.Empty;
-            return d;// Convert.ToString(d);
+            return d;
         }
 
 
@@ -1040,7 +1068,7 @@ namespace WebServer
             if (exp == null)
             {
                 // ошибка. нечего парсить
-                throw new Exception($"<-- ERROR: UNKNOWN ERROR IN EXPRESSION -->");
+                throw new Exception($"<-- ERROR: UNKNOWN ERROR IN EXPRESSION (SET enableDebug for more information -->");
             }
 
             foreach (string s in exp)
@@ -1653,3 +1681,16 @@ namespace WebServer
         public static string quoted(string text) => $"\"{text}\"";
     }
 }
+
+/*
+ КОМАНДА: {% IF <выражение | переменная> %} <код> {% ELSE %} <код> {% ENDIF %}
+ ПРИМЕРЫ:
+    {% IF value %} - где value определено в словаре как data.Add("value", true)
+    {% IF dict['name'] %} - где value определено в словаре как data.Add("dict", dict.Add("name", true))
+                            если такого ключа нет, то вернет пустую строку ""
+                            если такого словаря нет, то вернет пустую строку ""
+         
+    {% IF value.property %} - где value определено в словаре как data.Add("dict", some_class)
+                              если такого свойства нет, то вызовет ошибку
+     
+     */

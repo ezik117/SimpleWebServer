@@ -152,7 +152,7 @@ namespace WebServer
         public SessionData(double expiredMinutes)
         {
             this.sessionId = ((SessionIDManager)(new SessionIDManager())).CreateSessionID(null);
-            this.keys = new Dictionary<string, string>();
+            this.keys = new Dictionary<string, object>();
             this.expiration = expiredMinutes;
         }
 
@@ -164,7 +164,7 @@ namespace WebServer
         /// <summary>
         /// Хранимые значения в сессии.
         /// </summary>
-        public Dictionary<string, string> keys;
+        public Dictionary<string, object> keys;
 
         /// <summary>
         /// Время жизни сессии в минутах. Установка этого параметра автоматически продлит время сессии на указанное значение.
@@ -204,12 +204,32 @@ namespace WebServer
         private DateTime _inUse;
 
         /// <summary>
-        /// Возвращает значение ключевой пары. Если ключевая пара не существует возвращает значение defaultValue.
+        /// Возвращает значение ключевой пары преобразуя к типу string. Если ключевая пара не существует
+        /// возвращает значение defaultValue.
         /// </summary>
         /// <param name="key">Имя ключа.</param>
         /// <param name="defaultValue">Возвращаемое значение, если ключ не найден. По умолчанию null.</param>
         /// <returns>Строковое значение ключевой пары.</returns>
-        public string Get(string key, string defaultValue = null)
+        public string GetString(string key, string defaultValue = null)
+        {
+            try
+            {
+                return this.keys[key].ToString();
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+
+        /// <summary>
+        /// Возвращает значение ключевой пары. Если ключевая пара не существует
+        /// возвращает значение defaultValue.
+        /// </summary>
+        /// <param name="key">Имя ключа.</param>
+        /// <param name="defaultValue">Возвращаемое значение, если ключ не найден. По умолчанию null.</param>
+        /// <returns>Строковое значение ключевой пары.</returns>
+        public object Get(string key, object defaultValue = null)
         {
             try
             {
@@ -226,7 +246,7 @@ namespace WebServer
         /// </summary>
         /// <param name="key">Ключ.</param>
         /// <param name="value">Значение.</param>
-        public void Set(string key, string value)
+        public void Set(string key, object value)
         {
             this.keys.Add(key, value);
         }

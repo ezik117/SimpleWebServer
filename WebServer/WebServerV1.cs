@@ -158,6 +158,7 @@ namespace WebServer
 
                     byte[] buffer = System.Text.Encoding.GetEncoding(this.responseCodePage).GetBytes(userResponse.responseString);
 
+                    response.StatusCode = (int)userResponse.exitCode;
                     response.ContentType = "text/html";
                     response.ContentLength64 = buffer.Length;
                     Stream output = response.OutputStream;
@@ -222,7 +223,7 @@ namespace WebServer
                 }
                 else
                 {
-                    response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    response.StatusCode = (int)HttpStatusCode.NotFound;
                     response.ContentLength64 = 0;
                     response.OutputStream.Close();
                 }
@@ -251,9 +252,8 @@ namespace WebServer
         {
             RequestContext rc = new RequestContext
             {
-                values = new Dictionary<string, object>(),
+                variables = new Dictionary<string, object>(),
                 Method = (RequestMethod)Enum.Parse(typeof(RequestMethod), request.HttpMethod.ToString().ToUpper()),
-                encoding = request.ContentEncoding,
                 Route = request.RawUrl.Split('?')[0],
                 sessionManager = this.sm,
                 session = sm.GetSession(request.Cookies["SSID"]?.Value),
@@ -262,12 +262,13 @@ namespace WebServer
             };
 
             if (rc.session == null) rc.session = sm.CreateSession(this.sessionDuration);
+            rc.variables.Add("session", rc.session.keys);
 
             if (rc.Method == RequestMethod.GET)
             {
                 foreach (string key in request.QueryString.AllKeys)
                 {
-                    rc.values.Add(key, request.QueryString[key]);
+                    rc.parameters.Add(key, request.QueryString[key]);
                 }
             }
             else if (rc.Method == RequestMethod.POST)
@@ -281,7 +282,7 @@ namespace WebServer
                     foreach (string value in values)
                     {
                         string[] pair = value.Split('=');
-                        rc.values.Add(pair[0], HttpUtility.UrlDecode(pair[1]));
+                        rc.parameters.Add(pair[0], HttpUtility.UrlDecode(pair[1]));
                     }
                 }
                 request.InputStream.Close();
@@ -314,7 +315,7 @@ namespace WebServer
             }
             catch
             {
-                return new ResponseContext();
+                return new ResponseContext("Internal server error", "", HttpStatusCode.InternalServerError);
             }
         }
 
@@ -411,13 +412,15 @@ namespace WebServer
         // ---- основные параметры
         public RequestMethod Method; // метод: GET, POST...
         public string Route; // запрошенный URL начинающийся с "/"
-        public Encoding encoding; // кодировка страницы
-        public Dictionary<string, object> values; // словарь параметров запроса
-        public SessionData session; // ссылка на объект пользовательской 
+        public Dictionary<string, object> parameters; // словарь параметров запроса
+        public SessionData session; // ссылка на объект пользовательской сессии
+        public Dictionary<string, object> variables;
+
         // ---- расширенные параметры
         public HttpListenerRequest baseRequest; // ссылка на базовый объект запроса
         public SessionManager sessionManager; // ссылка на менеджер сессий
         public string redirect; // если установлен, то ссылка перехода
+
         // ---- методы
         /// <summary>
         /// Возвращает значение параметра полученного через GET/POST. Данный метод более
@@ -429,7 +432,7 @@ namespace WebServer
         /// <returns>Значение параметра или пустая строка, если параметр не задан.</returns>
         public string GetValue(string name, string defaultValue = "")
         {
-            return (values.ContainsKey(name) ? values[name].ToString() : defaultValue);
+            return (parameters.ContainsKey(name) ? parameters[name].ToString() : defaultValue);
         }
     }
 
@@ -442,10 +445,16 @@ namespace WebServer
         /// Обработанный HTML ответ.
         /// </summary>
         public string responseString;
+
         /// <summary>
         /// Если не равен пустой строке, то требуется переход.
         /// </summary>
         public string redirectUrl;
+
+        /// <summary>
+        /// Код выхода, по умолчанию "OK"(200)
+        /// </summary>
+        public HttpStatusCode exitCode;
 
         /// <summary>
         /// Конструктор. Создает возвращаемый класс обработки запроса пользовательской функцией.
@@ -453,10 +462,11 @@ namespace WebServer
         /// <param name="responseString">Возвращаемый текст HTML.</param>
         /// <param name="redirectUrl">Адрес перехода. Если установлен, то будет отравлен код 302 с адресом,
         /// а ResponseString проигнорирована.</param>
-        public ResponseContext(string responseString = "", string redirectUrl = "")
+        public ResponseContext(string responseString = "", string redirectUrl = "", HttpStatusCode exitCode = HttpStatusCode.OK)
         {
             this.redirectUrl = redirectUrl;
             this.responseString = responseString;
+            this.exitCode = exitCode;
         }
     }
 
@@ -475,7 +485,4 @@ namespace WebServer
         TRACE,
         CONNECT
     }
-
-    
-
 }

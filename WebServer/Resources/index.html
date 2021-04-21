@@ -5,9 +5,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="/bootstrap.min.css" rel="stylesheet">
+    <title>Computer information</title>
 </head>
 <body style="overflow-x: hidden;">
+
     {% INCLUDE 'header.html' %}
+
+    <span style="font-size:70%; margin:3px;">Generated: {{date}}</span>
+
     <table class="table table-sm">
         <thead>
             <tr>
@@ -26,15 +31,13 @@
     </table>
 
     <script>
-		function showLogin()
-		{
-			var x = document.getElementById('enterPwd');
-			x.style.right = "0px";
-		}
-		function hideLogin()
-        {
-			var x = document.getElementById('enterPwd');
-			x.style.right = "-205px";
+        function showLogin() {
+            var x = document.getElementById('enterPwd');
+            x.style.right = "0px";
+        }
+        function hideLogin() {
+            var x = document.getElementById('enterPwd');
+            x.style.right = "-205px";
         }
         function showWait() {
             var x = document.getElementById('formElements');
