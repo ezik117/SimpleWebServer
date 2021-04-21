@@ -60,7 +60,7 @@ static class RouteFunctions
     {
         context.values.Add("dateNow", DateTime.Now);
 
-        TemplateParser tp = new TemplateParser(data);
+        TemplateParser tp = new TemplateParser();
         
         return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{dateNow}}</BODY></HTML>", context.values));
     }
