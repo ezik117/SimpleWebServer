@@ -58,12 +58,11 @@ static class RouteFunctions
     // Route: "/"
     public static ResponseContext Index(RequestContext context)
     {
-        Dictionary<string, object> data = new Dictionary<string, object>();
-        data.Add("dateNow", DateTime.Now);
+        context.values.Add("dateNow", DateTime.Now);
 
         TemplateParser tp = new TemplateParser(data);
         
-        return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{dateNow}}</BODY></HTML>", data));
+        return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{dateNow}}</BODY></HTML>", context.values));
     }
 }
 
