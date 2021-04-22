@@ -168,6 +168,21 @@ namespace WebServer
                 outQueue.Enqueue(e.Data + "\r\n");
             }
         }
+
+        // Route: "/test"
+        public static ResponseContext Test(RequestContext context)
+        {
+            context.variables.Add("v1", null); 
+            context.variables.Add("d1", new Dictionary<string, string>() { { "k1", "v1" } });
+
+            TemplateParser tp = new TemplateParser();
+
+            return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>
+{% IF v1 != null %} v1 {% ELSE %} 'null' {% ENDIF %}
+{{d1['k1']}}
+
+</BODY></HTML>", context.variables));
+        }
     }
 }
 

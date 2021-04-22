@@ -153,7 +153,7 @@ namespace WebServer
                 else
                 {
                     // вернем в браузер ответ пользовательской функции
-                    bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session.sessionId);
+                    bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session?.sessionId);
                     if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId));
 
                     byte[] buffer = System.Text.Encoding.GetEncoding(this.responseCodePage).GetBytes(userResponse.responseString);
@@ -261,8 +261,7 @@ namespace WebServer
                 redirect = ""
             };
 
-            if (rc.session == null) rc.session = sm.CreateSession(this.sessionDuration);
-            rc.variables.Add("session", rc.session.keys);
+            rc.variables.Add("session", rc.session?.keys);
 
             if (rc.Method == RequestMethod.GET)
             {
