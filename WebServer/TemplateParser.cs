@@ -1344,7 +1344,7 @@ namespace WebServer
         public void Eval(string op)
         {
             dynamic x2 = this.Pop();
-            dynamic x1 = this.Pop();
+            dynamic x1 = (op != "!" ? this.Pop() : null); // не берем второй операнд, если это однооперандовая операция
             object x = null;
 
             switch (op)
@@ -1403,7 +1403,6 @@ namespace WebServer
 
                 case "!":
                     x = !(bool)x2;
-                    this.Push(x1);
                     break;
 
                 case "&&":
