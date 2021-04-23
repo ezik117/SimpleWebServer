@@ -24,17 +24,19 @@ namespace WebServer
             System.Data.DataSet ds = new System.Data.DataSet();
             ds.Tables.Add("sampleTable");
 
+            string template = @"
+{{- g = 1 -}}
+{% IF g==1 -%}
+  {{-  g  -}} {% ENDIF -%};
+
+";
 
             Dictionary<string, object> vals = new Dictionary<string, object>();
-            vals.Add("s1", "hello");
+            vals.Add("s1", "val=");
             vals.Add("s2", "world");
 
             TemplateParser tp = new TemplateParser(vals);
-            string exp = "d1=s1";
-            string r = tp.EvaluateExpression(exp).ToString();
-            exp = "d1";
-            r = tp.EvaluateExpression(exp).ToString();
-            Console.WriteLine($"'{exp}' = {r}");
+            Console.WriteLine(tp.ParseFromString(template));
 
 
             ConsoleKeyInfo k = Console.ReadKey(true);

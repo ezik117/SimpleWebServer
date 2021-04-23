@@ -193,9 +193,20 @@ namespace WebServer
             {
                 // --1-- Первичная подготовка шаблона. Разбор на элементы. --------------------------------------
 
-                // Вывести все совпадения: {{}} и {%%}. Первая группа - тип: {-переменная, %-команда.
-                // Вторая группа - само выражение
-                MatchCollection mm = Regex.Matches(template, @"{([{|%])(.+?)[}|%]}");
+                // Вывести все совпадения: {{}} и {%%}. 
+                //    Первая группа - тип: {-переменная, %-команда.
+                //    Вторая группа - левый спецификатор
+                //    Третья группа - выражение/команда
+                //    Четвертая группа - правый спецификатор
+                const int grType = 1;
+                const int grSpRemL = 2;
+                const int grSpCountL = 3;
+                const int grExp = 4;
+                const int grSpCountR = 5;
+                const int grSpRemR = 6;
+                
+
+                MatchCollection mm = Regex.Matches(template, @"{([{%])(.?)(\s+)(.+?)(\s+)(.?)[}%]}");
 
                 // вспомогательные переменные
                 int lastBlockStartPosition = 0;
@@ -220,24 +231,42 @@ namespace WebServer
 
                     lastBlockStartPosition = m.Index + m.Length;
 
-                    // обработаем команду
-                    if (m.Groups[1].Value == "{")
+                    // если был левый спецификатор управления пробелами
+                    if (m.Groups[grSpRemL].Value == "-")
                     {
-                        // это переменная или выражение
-                        _Template_Element el = new _Template_Element("V", templateElementCurrentNr);
-                        el.expression = m.Groups[2].Value.Trim();
+                        _Template_Element el = new _Template_Element("SPL_REMOVE", templateElementCurrentNr);
                         templateElements.Add(el);
 
                         templateElementCurrentNr++;
                     }
-                    else
+
+                    // количество вручную заданных пробелов слева
                     {
-                        Match n_for = Regex.Match(m.Groups[2].Value, @"^\s*FOR\s+(\w+)\s+IN\s+(.+)$", RegexOptions.IgnoreCase);
-                        Match n_breakif = Regex.Match(m.Groups[2].Value, @"^\s*BREAKIF\s+(.+)", RegexOptions.IgnoreCase);
-                        Match n_efor = Regex.Match(m.Groups[2].Value, @"^\s*ENDFOR\s*$", RegexOptions.IgnoreCase);
-                        Match n_if = Regex.Match(m.Groups[2].Value, @"^\s*IF\s+(.+)$", RegexOptions.IgnoreCase);
-                        Match n_else = Regex.Match(m.Groups[2].Value, @"^\s*ELSE\s*$", RegexOptions.IgnoreCase);
-                        Match n_eif = Regex.Match(m.Groups[2].Value, @"^\s*ENDIF\s*$", RegexOptions.IgnoreCase);
+                        _Template_Element el = new _Template_Element("SPACES", templateElementCurrentNr);
+                        el.expression = m.Groups[grSpCountL].Value.Remove(m.Groups[grSpCountL].Value.Length - 1);
+                        templateElements.Add(el);
+                        templateElementCurrentNr++;
+                    }
+
+                    // обработаем команду
+                    if (m.Groups[grType].Value == "{")
+                    {
+                        // это переменная или выражение
+                        _Template_Element el = new _Template_Element("V", templateElementCurrentNr);
+                        el.expression = m.Groups[grExp].Value.Trim();
+                        templateElements.Add(el);
+
+                        templateElementCurrentNr++;
+                    }
+                    else if (m.Groups[grType].Value == "%")
+                    {
+                        // это команда
+                        Match n_for = Regex.Match(m.Groups[grExp].Value, @"^\s*FOR\s+(\w+)\s+IN\s+(.+)$", RegexOptions.IgnoreCase);
+                        Match n_breakif = Regex.Match(m.Groups[grExp].Value, @"^\s*BREAKIF\s+(.+)", RegexOptions.IgnoreCase);
+                        Match n_efor = Regex.Match(m.Groups[grExp].Value, @"^\s*ENDFOR\s*$", RegexOptions.IgnoreCase);
+                        Match n_if = Regex.Match(m.Groups[grExp].Value, @"^\s*IF\s+(.+)$", RegexOptions.IgnoreCase);
+                        Match n_else = Regex.Match(m.Groups[grExp].Value, @"^\s*ELSE\s*$", RegexOptions.IgnoreCase);
+                        Match n_eif = Regex.Match(m.Groups[grExp].Value, @"^\s*ENDIF\s*$", RegexOptions.IgnoreCase);
 
                         // TODO: Здесь разбираем команды поблочно
                         if (n_for.Success)
@@ -321,6 +350,23 @@ namespace WebServer
                         }
                     }
 
+                    // количество вручную заданных пробелов справа
+                    {
+                        _Template_Element el = new _Template_Element("SPACES", templateElementCurrentNr);
+                        el.expression = m.Groups[grSpCountR].Value.Remove(m.Groups[grSpCountR].Value.Length - 1);
+                        templateElements.Add(el);
+                        templateElementCurrentNr++;
+                    }
+
+                    // если был правый спецификатор управления пробелами
+                    if (m.Groups[grSpRemR].Value == "-")
+                    {
+                        _Template_Element el = new _Template_Element("SPR_REMOVE", templateElementCurrentNr);
+                        templateElements.Add(el);
+
+                        templateElementCurrentNr++;
+                    }
+
                 }
 
                 if (lastBlockStartPosition < template.Length)
@@ -328,6 +374,7 @@ namespace WebServer
                     // завершающий кусок текста
                     _Template_Element el = new _Template_Element("T", templateElementCurrentNr);
                     el.expression = template.Substring(lastBlockStartPosition, template.Length - lastBlockStartPosition);
+
                     templateElements.Add(el);
 
                     templateElementCurrentNr++;
@@ -351,18 +398,36 @@ namespace WebServer
                 int cursor = 0;
                 bool processBlock = true;
                 TBaseStack if_stack = new TBaseStack();
+                bool trimStartRequired = false;
 
                 // TODO: Здесь обрабатываем блоки
                 while (cursor < templateElements.Count)
                 {
                     switch (templateElements[cursor].type)
                     {
+                        // УПРАВЛЕНИЕ ПРОБЕЛАМИ
+                        case "SPL_REMOVE":
+                            res = res.TrimEnd(' ', '\r', '\n');
+                            cursor++;
+                            break;
+                        case "SPR_REMOVE":
+                            trimStartRequired = true;
+                            cursor++;
+                            break;
+                        case "SPACES":
+                            res += templateElements[cursor].expression;
+                            cursor++;
+                            break;
+
+
                         // TEXT
                         case "T":
                             if (processBlock)
                             {
-                                res += templateElements[cursor].expression;
+                                res += (trimStartRequired ? templateElements[cursor].expression.TrimStart(' ', '\r', '\n') :
+                                                            templateElements[cursor].expression);
                             }
+                            trimStartRequired = false;
                             cursor++;
                             break;
 
