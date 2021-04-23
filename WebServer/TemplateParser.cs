@@ -1338,255 +1338,88 @@ namespace WebServer
         /// <summary>
         /// Произвести унарную операцию с последними двумя числами в стеке.
         /// Операнды удаляются из стека. Результат кладется в стек.
+        /// В случае ошибки генерируется исключение.
         /// </summary>
         /// <param name="op">Операция</param>
-        /// <returns>True - если операция выполнена. Исключение - неизвестный оператор.</returns>
         public void Eval(string op)
         {
-            int err = 0;
-            object x2 = this.Pop();
-            object x1 = this.Pop();
+            dynamic x2 = this.Pop();
+            dynamic x1 = this.Pop();
             object x = null;
-
-            if (x1 == null)
-                if (x2 is System.String)
-                    x1 = string.Empty;
-                else
-                    x1 = (double)0.0f;
 
             switch (op)
             {
                 case "+":
-                    if (x1 is System.String || x2 is System.String)
-                        x = String.Concat(x1, x2);
-                    else if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 + (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 + x2;
                     break;
 
                 case "-":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 - (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 - x2;
                     break;
 
                 case "*":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 * (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 * x2;
                     break;
 
                 case "/":
-                    if (IsNumericType(x1) && IsNumericType(x2))
+                    if (IsNumericType(x1) && IsNumericType(x2) && (x2 == 0))
                     {
-                        if ((dynamic)x2 == 0)
-                        {
-                            err = 3;
-                        }
-                        else
-                        {
-                            x = (dynamic)x1 / (dynamic)x2;
-                        }
-                        
+                        throw new Exception($"ERROR: DIVISION BY ZERO: {x1} / {x2}");
                     }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 / x2;
                     break;
-
 
                 case "%":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        if ((dynamic)x2 == 0)
-                        {
-                            err = 3;
-                        }
-                        else
-                        {
-                            x = (dynamic)x1 % (dynamic)x2;
-                        }
-
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 % x2;
                     break;
 
-
                 case "^":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = Math.Pow((dynamic)x1, (dynamic)x2);
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = Math.Pow(x1, x2);
                     break;
 
                 case "==":
-                    if (x1.GetType() == x2.GetType())
-                    {
-                        x = x1.Equals(x2);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            x = x1 == x2;
-                        }
-                        catch
-                        {
-                            err = 2;
-                        }
-                    }
+                    x = (x1 == x2);
                     break;
 
                 case "!=":
-                    if (x1.GetType() == x2.GetType())
-                    {
-                        x = !x1.Equals(x2);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            x = x1 != x2;
-                        }
-                        catch
-                        {
-                            err = 2;
-                        }
-                    }
+                    x = (x1 != x2);
                     break;
 
                 case "<":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 < (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 < x2);
                     break;
 
                 case "<=":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 <= (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 <= x2);
                     break;
 
                 case ">":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 > (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 > x2);
                     break;
 
                 case ">=":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 >= (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 >= x2);
                     break;
 
                 case "!":
-                    if (x2 is bool)
-                    {
-                        x = !(bool)x2;
-                        if (x1 != null) this.Push(x1);
-                    }
-                    else
-                    {
-                        err = 4;
-                    }
+                    x = !(bool)x2;
+                    this.Push(x1);
                     break;
 
                 case "&&":
-                    if (x1 is bool && x2 is bool)
-                    {
-                        x = (bool)x2 && (bool)x1;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 && x2);
                     break;
 
                 case "||":
-                    if (x1 is bool && x2 is bool)
-                    {
-                        x = (bool)x2 || (bool)x1;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 || x2);
                     break;
 
                 default:
-                    err = 1;
+                    throw new Exception($"ERROR: UNKNOWN OPERATOR '{op}'");
                     break;
             }
 
-            if (err != 0)
-            {
-                this.Push(x1);
-                this.Push(x2);
-
-                switch (err)
-                {
-                    case 1:
-                        // ошибка. Неизвестный оператор
-                        throw new Exception($"<-- ERROR: UNKNOWN OPERATOR '{op}' -->");
-                    case 2:
-                        // ошибка. Несовместимый с данными операндами оператор
-                        throw new Exception($"<-- ERROR: INCOMPATIBLE OPERAND '{x1}' AND '{x2}' FOR OPERATOR '{op}' -->");
-                    case 3:
-                        // ошибка. Несовместимый с данными операндами оператор
-                        throw new Exception($"<-- ERROR: DIVISION BY ZERO '{x1}' / '{x2}' -->");
-                    case 4:
-                        // ошибка. Несовместимый с данными операндами оператор
-                        throw new Exception($"<-- ERROR: OPERATOR '{op}' IS INCOMPATIBLE WITH OPERAND '{x2}' -->");
-                }
-                
-            }
-            else
-            {
-                this.Push(x);
-            }
+            this.Push(x);
         }
     }
 
