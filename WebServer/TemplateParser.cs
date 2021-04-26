@@ -744,7 +744,7 @@ namespace WebServer
             List<string> outbound = new List<string>();
 
             // разделим элементы (символы разделения добавляются спереди или сзади знаков ^*/+-()
-            string separators = operators.opsList() + @"(?=([^']*'[^']*')*[^']*$)";
+            string separators = "(" + operators.opsList() + ")" + @"(?=([^']*'[^']*')*[^']*$)";
             string expression = Regex.Replace(infixExpression, separators, "\0$0\0");
             string[] inbound_temp = expression.Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
             List<string> inbound = new List<string>();
@@ -834,6 +834,11 @@ namespace WebServer
                         // должна быть открывающая скобка
                         throw new Exception("ERROR: MUST BE OPENING ROUND BRACKET.");
                 }
+                else if (v.Length > 1 && v[0] == '\'' && v[v.Length-1] == '\'')
+                {
+                    // строка
+                    outbound.Add(v);
+                }
                 else if (Regex.IsMatch(v, operators.opsList()))
                 { 
                     // оператор
@@ -876,7 +881,7 @@ namespace WebServer
         /// </summary>
         /// <param name="data">Ссылка на строку содержающую переменную</param>
         /// <returns>Возвращает класс с значением переменной с ее исходным типом.</returns>
-        public Result parseValue(string data)
+        private Result parseValue(string data)
         {
             Result result = new Result();
 

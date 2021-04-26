@@ -25,10 +25,9 @@ namespace WebServer
             ds.Tables.Add("sampleTable");
 
             string template = @"
-{{ g = 3 }}
-{{ h = 2 }}
-{% IF (g==h) %}it is null{% ENDIF %}
+{{ (2^4) + 'hello' + ' ' + 'world! ' + (2^4) }}
 ";
+            //template = "{{ 2+4 }}";
 
             Dictionary<string, object> vals = new Dictionary<string, object>();
             vals.Add("s1", "val=");
