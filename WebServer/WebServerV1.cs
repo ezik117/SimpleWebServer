@@ -138,12 +138,12 @@ namespace WebServer
             // вначале проверяется не является ли запрошенный ресурс URL в таблице переходов
             if (this.routeTable.ContainsKey(rc.Route) && request.Headers["Accept"].Contains("text/html"))
             {
-                // если да - запускаем парсер
+                // если да - запускаем парсер и возвращаем его ответ
                 ResponseContext userResponse = ProcessRoute(rc);
 
                 if (userResponse.redirectUrl != "")
                 {
-                    // пользовательская функция вызвала метод перенаправления
+                    // пользовательская функция вызвала метод перенаправления (redirect)
                     bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session.sessionId);
                     if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId)); // задать куки с номером сессии
 
@@ -169,39 +169,27 @@ namespace WebServer
             }
             else
             {
-                // получим имя запрашиваемого файла с защитой от доступа к ресурсам вне разрешенной папки
-                string file = rc.Route.Replace("..\\", string.Empty).Replace("../", string.Empty).TrimStart('\\', '/');
-                string filename = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-                                  this.staticContent,
-                                  file);
+                // --- запрошенный ресурс не в таблице маршрутизации - это или ресурс или ошибочная ссылка
 
-                
-                string extension = Path.GetExtension(filename);
-                string embeddedResourceName = $"{Assembly.GetExecutingAssembly().GetName().Name}.Resources.{file}";
-
-                // проверим что запрашиваемый ресурс в списке доступных
-                if (allowedMimeTypes.Keys.Contains(extension))
+                if (!this.useEmbeddedResources)
                 {
-                    try
+                    // если сервер использует режим хранения ресурсов в файловой системе
+
+                    // получим имя запрашиваемого файла с защитой от доступа к ресурсам вне разрешенной папки
+                    string file = rc.Route.Replace("..\\", string.Empty).Replace("../", string.Empty).TrimStart('\\', '/');
+                    string filename = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                                      this.staticContent,
+                                      file);
+                    string extension = Path.GetExtension(filename);
+
+                    // проверим что запрашиваемый ресурс в списке разрешенных
+                    if (allowedMimeTypes.Keys.Contains(extension))
                     {
-                        if (!this.useEmbeddedResources && File.Exists(filename))
+                        if (File.Exists(filename))
                         {
                             // ищем файл на сервере в доступных для этого папках и передаем
                             Stream input = new FileStream(filename, FileMode.Open);
                             response.ContentType = allowedMimeTypes[extension];
-                            //input.CopyTo(response.OutputStream);
-                            response.ContentLength64 = input.Length;
-                            this.CopyStream(input, response.OutputStream);
-                            input.Close();
-                            response.OutputStream.Close();
-                        }
-                        else if (this.useEmbeddedResources &&
-                                (Assembly.GetExecutingAssembly().GetManifestResourceNames().Where(x => x == embeddedResourceName).Count() > 0))
-                        {
-                            // ищем файл среди встроенные ресурсов
-                            Stream input = Assembly.GetExecutingAssembly().GetManifestResourceStream(embeddedResourceName);
-                            response.ContentType = allowedMimeTypes[extension];
-                            //input.CopyTo(response.OutputStream);
                             response.ContentLength64 = input.Length;
                             this.CopyStream(input, response.OutputStream);
                             input.Close();
@@ -209,27 +197,65 @@ namespace WebServer
                         }
                         else
                         {
-                            response.StatusCode = (int)HttpStatusCode.NotFound; // вначале всегда код возврата
+                            // файл не найден
+                            response.StatusCode = (int)HttpStatusCode.NotFound;
                             response.ContentLength64 = 0;
-                            response.OutputStream.Close(); // а в самом конце закрытие потока
+                            response.OutputStream.Close();
                         }
                     }
-                    catch
+                    else
                     {
-                        response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                        // запрошен неразрешенный тип файла
+                        response.StatusCode = (int)HttpStatusCode.Forbidden;
                         response.ContentLength64 = 0;
                         response.OutputStream.Close();
                     }
                 }
                 else
                 {
-                    response.StatusCode = (int)HttpStatusCode.NotFound;
-                    response.ContentLength64 = 0;
-                    response.OutputStream.Close();
+                    // если сервер использует режим хранения ресурсов в сборке EXE
+                    string embeddedResourceName = $"{Assembly.GetExecutingAssembly().GetName().Name}.Resources.{rc.Route}";
+                    string extension = Path.GetExtension(rc.Route);
+
+                    // проверим что запрашиваемый ресурс в списке разрешенных
+                    if (allowedMimeTypes.Keys.Contains(extension))
+                    {
+                        // ищем запрошенный файл в ресурсах и передаем
+                        if ((Assembly.GetExecutingAssembly().GetManifestResourceNames().Where(x => x == embeddedResourceName).Count() > 0))
+                        {
+                            Stream input = Assembly.GetExecutingAssembly().GetManifestResourceStream(embeddedResourceName);
+                            response.ContentType = allowedMimeTypes[extension];
+                            response.ContentLength64 = input.Length;
+                            this.CopyStream(input, response.OutputStream);
+                            input.Close();
+                            response.OutputStream.Close();
+                        }
+                        else
+                        {
+                            // файл не найден
+                            response.StatusCode = (int)HttpStatusCode.NotFound;
+                            response.ContentLength64 = 0;
+                            response.OutputStream.Close();
+                        }
+                    }
+                    else
+                    {
+                        // запрошен неразрешенный тип файла
+                        response.StatusCode = (int)HttpStatusCode.Forbidden; // вначале всегда код возврата
+                        response.ContentLength64 = 0;
+                        response.OutputStream.Close(); // а в самом конце закрытие потока
+                    }
                 }
             }      
         }
 
+        /// <summary>
+        /// Копирует поток в поток асинхронно. Это правильная замена встроенной функции srcStream.CopyTo(destStream),
+        /// т.к. последняя имеет баг и выполняется асинхронно.
+        /// </summary>
+        /// <param name="input">Входной поток (из которого копируется).</param>
+        /// <param name="output">Выходной поток (в который копируется)</param>
+        /// <returns>Количество скопированных байтов.</returns>
         private long CopyStream(Stream input, Stream output)
         {
             long copiesBytes = 0;
