@@ -193,9 +193,20 @@ namespace WebServer
             {
                 // --1-- Первичная подготовка шаблона. Разбор на элементы. --------------------------------------
 
-                // Вывести все совпадения: {{}} и {%%}. Первая группа - тип: {-переменная, %-команда.
-                // Вторая группа - само выражение
-                MatchCollection mm = Regex.Matches(template, @"{([{|%])(.+?)[}|%]}");
+                // Вывести все совпадения: {{}} и {%%}. 
+                //    Первая группа - тип: {-переменная, %-команда.
+                //    Вторая группа - левый спецификатор
+                //    Третья группа - выражение/команда
+                //    Четвертая группа - правый спецификатор
+                const int grType = 1;
+                const int grSpRemL = 2;
+                const int grSpCountL = 3;
+                const int grExp = 4;
+                const int grSpCountR = 5;
+                const int grSpRemR = 6;
+                
+
+                MatchCollection mm = Regex.Matches(template, @"{([{%])(.?)(\s+)(.+?)(\s+)(.?)[}%]}");
 
                 // вспомогательные переменные
                 int lastBlockStartPosition = 0;
@@ -220,24 +231,42 @@ namespace WebServer
 
                     lastBlockStartPosition = m.Index + m.Length;
 
-                    // обработаем команду
-                    if (m.Groups[1].Value == "{")
+                    // если был левый спецификатор управления пробелами
+                    if (m.Groups[grSpRemL].Value == "-")
                     {
-                        // это переменная или выражение
-                        _Template_Element el = new _Template_Element("V", templateElementCurrentNr);
-                        el.expression = m.Groups[2].Value.Trim();
+                        _Template_Element el = new _Template_Element("SPL_REMOVE", templateElementCurrentNr);
                         templateElements.Add(el);
 
                         templateElementCurrentNr++;
                     }
-                    else
+
+                    // количество вручную заданных пробелов слева
                     {
-                        Match n_for = Regex.Match(m.Groups[2].Value, @"^\s*FOR\s+(\w+)\s+IN\s+(.+)$", RegexOptions.IgnoreCase);
-                        Match n_breakif = Regex.Match(m.Groups[2].Value, @"^\s*BREAKIF\s+(.+)", RegexOptions.IgnoreCase);
-                        Match n_efor = Regex.Match(m.Groups[2].Value, @"^\s*ENDFOR\s*$", RegexOptions.IgnoreCase);
-                        Match n_if = Regex.Match(m.Groups[2].Value, @"^\s*IF\s+(.+)$", RegexOptions.IgnoreCase);
-                        Match n_else = Regex.Match(m.Groups[2].Value, @"^\s*ELSE\s*$", RegexOptions.IgnoreCase);
-                        Match n_eif = Regex.Match(m.Groups[2].Value, @"^\s*ENDIF\s*$", RegexOptions.IgnoreCase);
+                        _Template_Element el = new _Template_Element("SPACES", templateElementCurrentNr);
+                        el.expression = m.Groups[grSpCountL].Value.Remove(m.Groups[grSpCountL].Value.Length - 1);
+                        templateElements.Add(el);
+                        templateElementCurrentNr++;
+                    }
+
+                    // обработаем команду
+                    if (m.Groups[grType].Value == "{")
+                    {
+                        // это переменная или выражение
+                        _Template_Element el = new _Template_Element("V", templateElementCurrentNr);
+                        el.expression = m.Groups[grExp].Value.Trim();
+                        templateElements.Add(el);
+
+                        templateElementCurrentNr++;
+                    }
+                    else if (m.Groups[grType].Value == "%")
+                    {
+                        // это команда
+                        Match n_for = Regex.Match(m.Groups[grExp].Value, @"^\s*FOR\s+(\w+)\s+IN\s+(.+)$", RegexOptions.IgnoreCase);
+                        Match n_breakif = Regex.Match(m.Groups[grExp].Value, @"^\s*BREAKIF\s+(.+)", RegexOptions.IgnoreCase);
+                        Match n_efor = Regex.Match(m.Groups[grExp].Value, @"^\s*ENDFOR\s*$", RegexOptions.IgnoreCase);
+                        Match n_if = Regex.Match(m.Groups[grExp].Value, @"^\s*IF\s+(.+)$", RegexOptions.IgnoreCase);
+                        Match n_else = Regex.Match(m.Groups[grExp].Value, @"^\s*ELSE\s*$", RegexOptions.IgnoreCase);
+                        Match n_eif = Regex.Match(m.Groups[grExp].Value, @"^\s*ENDIF\s*$", RegexOptions.IgnoreCase);
 
                         // TODO: Здесь разбираем команды поблочно
                         if (n_for.Success)
@@ -321,6 +350,23 @@ namespace WebServer
                         }
                     }
 
+                    // количество вручную заданных пробелов справа
+                    {
+                        _Template_Element el = new _Template_Element("SPACES", templateElementCurrentNr);
+                        el.expression = m.Groups[grSpCountR].Value.Remove(m.Groups[grSpCountR].Value.Length - 1);
+                        templateElements.Add(el);
+                        templateElementCurrentNr++;
+                    }
+
+                    // если был правый спецификатор управления пробелами
+                    if (m.Groups[grSpRemR].Value == "-")
+                    {
+                        _Template_Element el = new _Template_Element("SPR_REMOVE", templateElementCurrentNr);
+                        templateElements.Add(el);
+
+                        templateElementCurrentNr++;
+                    }
+
                 }
 
                 if (lastBlockStartPosition < template.Length)
@@ -328,6 +374,7 @@ namespace WebServer
                     // завершающий кусок текста
                     _Template_Element el = new _Template_Element("T", templateElementCurrentNr);
                     el.expression = template.Substring(lastBlockStartPosition, template.Length - lastBlockStartPosition);
+
                     templateElements.Add(el);
 
                     templateElementCurrentNr++;
@@ -351,20 +398,40 @@ namespace WebServer
                 int cursor = 0;
                 bool processBlock = true;
                 TBaseStack if_stack = new TBaseStack();
+                bool trimStartRequired = false;
 
                 // TODO: Здесь обрабатываем блоки
                 while (cursor < templateElements.Count)
                 {
                     switch (templateElements[cursor].type)
                     {
-                        case "T":
-                            if (processBlock)
-                            {
-                                res += templateElements[cursor].expression;
-                            }
+                        // УПРАВЛЕНИЕ ПРОБЕЛАМИ
+                        case "SPL_REMOVE":
+                            res = res.TrimEnd(' ', '\r', '\n');
+                            cursor++;
+                            break;
+                        case "SPR_REMOVE":
+                            trimStartRequired = true;
+                            cursor++;
+                            break;
+                        case "SPACES":
+                            res += templateElements[cursor].expression;
                             cursor++;
                             break;
 
+
+                        // TEXT
+                        case "T":
+                            if (processBlock)
+                            {
+                                res += (trimStartRequired ? templateElements[cursor].expression.TrimStart(' ', '\r', '\n') :
+                                                            templateElements[cursor].expression);
+                            }
+                            trimStartRequired = false;
+                            cursor++;
+                            break;
+
+                        // EXPRESSION or VALUE
                         case "V":
                             if (processBlock)
                             {
@@ -373,6 +440,7 @@ namespace WebServer
                             cursor++;
                             break;
 
+                       // FOR
                         case "F":
                             if (processBlock)
                             {
@@ -419,6 +487,7 @@ namespace WebServer
                             cursor++;
                             break;
 
+                        // BREAKIF
                         case "BI":
                             if (processBlock)
                             {
@@ -432,6 +501,7 @@ namespace WebServer
                             cursor++;
                             break;
 
+                        // ENDFOR
                         case "EF":
                             if (processBlock)
                             {
@@ -439,6 +509,7 @@ namespace WebServer
                             }
                             break;
 
+                        // IF
                         case "I":
                             if (processBlock)
                             {
@@ -448,11 +519,13 @@ namespace WebServer
                             cursor++;
                             break;
 
+                        // ELSE
                         case "EL":
                             processBlock = !processBlock;
                             cursor++;
                             break;
 
+                        // ENDIF
                         case "EI":
                             processBlock = (bool)if_stack.Pop();
                             cursor++;
@@ -661,19 +734,17 @@ namespace WebServer
 
         /// <summary>
         /// Преобразует строку в инфиксной записи в строку с постфиксной записью (обратная польская записЬ).
-        /// Поддерживаются переменные (переменная - любое слово начинающееся с символа $).
-        /// Так же поддерживаются строки (начинаются с одинарной кавычки.
         /// Используется алгоритм сортировочной станции
         /// </summary>
         /// <param name="exp">Строка в инфиксной записи</param>
-        /// <returns>Массив строк в постфиксной записи. Null - если формула записана с ошибками.</returns>
+        /// <returns>Массив строк в постфиксной записи. Exception если ошибка обработки.</returns>
         private string[] convertExpressionToPostfix(ref string infixExpression)
         {
             List<string> stack = new List<string>();
             List<string> outbound = new List<string>();
 
             // разделим элементы (символы разделения добавляются спереди или сзади знаков ^*/+-()
-            string separators = operators.opsList() + @"(?=([^']*'[^']*')*[^']*$)";
+            string separators = "(" + operators.opsList() + ")" + @"(?=([^']*'[^']*')*[^']*$)";
             string expression = Regex.Replace(infixExpression, separators, "\0$0\0");
             string[] inbound_temp = expression.Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
             List<string> inbound = new List<string>();
@@ -739,17 +810,8 @@ namespace WebServer
             foreach (string s in inbound)
             {
                 string v = s.Trim();
-                if (Regex.IsMatch(v, @"^[\d.]+"))
-                {
-                    // число - сразу в выходную очередь
-                    outbound.Add(v);
-                }
-                else if (Regex.IsMatch(v, @"^'.*'$"))
-                {
-                    // текст - в выходную очередь
-                    outbound.Add(v);
-                }
-                else if (v == "(")
+  
+                if (v == "(")
                 {
                     // открывающая скобка
                     stack.Add(s);
@@ -770,11 +832,11 @@ namespace WebServer
                         stack.RemoveAt(stack.Count - 1);
                     else
                         // должна быть открывающая скобка
-                        throw new Exception();
+                        throw new Exception("ERROR: MUST BE OPENING ROUND BRACKET.");
                 }
-                else if (v == "true" || v == "false")
+                else if (v.Length > 1 && v[0] == '\'' && v[v.Length-1] == '\'')
                 {
-                    // логическая константа
+                    // строка
                     outbound.Add(v);
                 }
                 else if (Regex.IsMatch(v, operators.opsList()))
@@ -791,31 +853,8 @@ namespace WebServer
                 }
                 else 
                 {
-                    // все что осталось полагаем переменная - вычислим и в выходную очередь
-                    try
-                    {
-                        dynamic x = this.parseValue(v);
-                        if (x is System.String)
-                        {
-                            outbound.Add($"'{x}'");
-                        }
-                        else if (x is bool)
-                        {
-                            outbound.Add(x.ToString().ToLower());
-                        }
-                        else
-                        {
-                            outbound.Add(Convert.ToString(x));
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // ошибка. Неизвестное выражение
-                        if (this.enableDebug)
-                            throw ex;
-                        else
-                            return null;
-                    }
+                    // все что осталось - в выходную очередь
+                    outbound.Add(v);
                 }
             }
 
@@ -824,7 +863,7 @@ namespace WebServer
             {
                 // не должны остаться скобки в формуле
                 if (Regex.IsMatch(outbound.Last(), "^[()].*"))
-                    throw new Exception();
+                    throw new Exception("ERROR: ROUND BRACKET COUNT IS NOT MATCH");
 
                 outbound.Add(stack.Last());
                 stack.RemoveAt(stack.Count - 1);
@@ -835,118 +874,170 @@ namespace WebServer
 
 
         /// <summary>
-        /// Обработчик имени переменной.
+        /// Обработчик переменной.
         /// Переменная может быть многоуровневой, например "data1.field3.field4[1].field1"
+        /// Переменная может быть константой. Поддерживаемые типы: числа, булевый, null.
         /// Поддержка 1D массивов любого уровня вложенности. Например "arr[1]" или "arr[1][2]..[n]"
-        /// В случае ошибки генерируется исключение с соответствующим текстом.
         /// </summary>
         /// <param name="data">Ссылка на строку содержающую переменную</param>
-        /// <returns>Возвращает значение переменной преобразованное к строке.</returns>
-        dynamic parseValue(string data)
+        /// <returns>Возвращает класс с значением переменной с ее исходным типом.</returns>
+        private Result parseValue(string data)
         {
-            List<object> res = new List<object>();
+            Result result = new Result();
+
             dynamic d = null;
-            bool firstAttribute = true;
 
-            string[] fields = data.Split('.');
-
-            foreach (string field in fields)
+            // -- проверка на константы -------------
+            // проверка на число
+            if (Regex.Match(data, @"^[+|-]?\d+[.]?\d*$").Success)
             {
-                string f = field;
-                var r = findPattern(ref f, 0, "[", "]");
-                if (r.lastSearchIndex < 0)
+                if (data.Contains('.'))
                 {
-                    // это аттрибут
-                    if (firstAttribute)
+                    char separator = System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator[0];
+                    if (!Double.TryParse(data.Replace('.', separator), out double t))
                     {
-                        if (!this.getDictionaryValue(field, true))
-                        {
-                            // ошибка. Нет такой переменной в словаре
-                            throw new Exception($"<-- ERROR: VALUE '{field}' IS NOT DEFINED -->");
-                        }
-                        d = this.getDictionaryValue(field);
-                        firstAttribute = false;
+                        result.retCode = -1;
+                        result.retMessage = $"ERROR: CANNOT EVALUATE {data} AS DOUBLE";
+                        return result;
                     }
                     else
                     {
-                        // проверим это поле или свойство
-                        if (d.GetType().GetField(field) != null)
-                        {
-                            try
-                            {
-                                d = d.GetType().GetField(field).GetValue(d); // объект атрибута по имени
-                            }
-                            catch
-                            {
-                                // ошибка. Нет такого поля
-                                throw new Exception($"<-- ERROR: FIELD '{field}' OF VALUE '{r.data}' IS NOT DEFINED -->");
-                            }
-                        }
-                        else if (d.GetType().GetProperty(field) != null)
-                        {
-                            try
-                            {
-                                d = d.GetType().GetProperty(field).GetValue(d); // объект атрибута по имени
-                            }
-                            catch
-                            {
-                                // ошибка. Нет такого свойства
-                                throw new Exception($"<-- ERROR: PROPERTY '{field}' OF VALUE '{r.data}' IS NOT DEFINED -->");
-                            }
-                        }
-                        else
-                        {
-                            // ошибка. Возможно это метод
-                            throw new Exception($"<-- ERROR: ELEMENT '{field}' OF VALUE '{r.data}' IS UNKNOWN -->");
-                        }
+                        result.retCode = 0;
+                        result.result = t;
+                        return result;
                     }
                 }
                 else
                 {
-                    // это массив
-                    string arrayName = field.Substring(0, r.firstSearchIndex);
-
-                    if (firstAttribute)
+                    if (!long.TryParse(data, out long t))
                     {
-                        if (!this.getDictionaryValue(arrayName, true))
-                        {
-                            // ошибка. Нет такой переменной в словаре
-                            throw new Exception($"<-- ERROR: VALUE '{arrayName}' IS NOT DEFINED -->");
-                        }
-                        d = this.getDictionaryValue(arrayName);
-                        firstAttribute = false;
+                        result.retCode = -1;
+                        result.retMessage = $"ERROR: CANNOT EVALUATE {data} AS LONG";
+                        return result;
                     }
                     else
                     {
+                        result.retCode = 0;
+                        result.result = t;
+                        return result;
+                    }
+                }
+            }
+
+            // проверка на NULL
+            else if (data == "null")
+            {
+                result.retCode = 0;
+                result.result = null;
+                return result;
+            }
+
+            // проверка на булевы выражения
+            else if (data == "true" || data == "false")
+            {
+                if (!bool.TryParse(data, out bool t))
+                {
+                    result.retCode = -1;
+                    result.retMessage = $"ERROR: CANNOT EVALUATE {data} AS BOOLEAN";
+                    return result;
+                }
+                else
+                {
+                    result.retCode = 0;
+                    result.result = t;
+                    return result;
+                }
+            }
+
+            // проверка на строку
+            else if (Regex.Match(data, @"^([""'])((?:(?=(\\?))\3.)*)\1$").Success)
+            {
+                result.retCode = 0;
+                result.result = data.Substring(1, data.Length - 2);
+                return result;
+            }
+
+            // -- проверка на переменные -------------
+            bool firstField = true;
+            string[] fields = data.Split('.');
+
+            foreach (string field in fields) // для каждой части переменной
+            {
+                string f = field;
+                var r = findPattern(ref f, 0, "[", "]"); // проверим нет ли признака массива
+                string baseName = field;
+                if (r.lastSearchIndex >= 0) // если это массив то имя базы вычисляется по другому
+                    baseName = field.Substring(0, r.firstSearchIndex);
+
+                // если это первая часть переменной (база), то получим ее значение из словаря)
+                if (firstField)
+                {
+                    if (!this.getDictionaryValue(baseName, onlyCheck:true)) // найдем значение базы в словаре
+                    {
+                        // ошибка. Нет такой переменной в словаре
+                        result.retCode = -1;
+                        result.retMessage = $"ERROR: VARIABLE '{baseName}' IS NOT DEFINED IN THE DICTIONARY";
+                        return result;
+                    }
+                    else
+                    {
+                        firstField = false;
+                        d = this.getDictionaryValue(baseName);
+                    }
+                }
+                else
+                {
+                    // если это последующие части переменной, то вычислим их значения исходя из возможных комбинаций
+                    // это поле?
+                    if (d.GetType().GetField(baseName) != null)
+                    {
                         try
                         {
-                            d = d.GetType().GetField(arrayName).GetValue(d); // объект атрибута по имени
+                            d = d.GetType().GetField(baseName).GetValue(d); // получим поле объекта по имени
                         }
                         catch
                         {
-                            if (this.enableDebug)
-                            {
-                                // ошибка. Нет такого поля
-                                throw new Exception($"<-- ERROR: FIELD '{arrayName}' of value '{r.data}' IS NOT DEFINED -->");
-                            }
-                            else
-                            {
-                                d = null;
-                            }
+                            // ошибка. Нет такого поля
+                            result.retCode = -1;
+                            result.retMessage = $"ERROR: FIELD '{baseName}' OF VALUE '{data}' IS NOT DEFINED";
+                            return result;
                         }
                     }
+                    // это свойство?
+                    else if (d.GetType().GetProperty(baseName) != null)
+                    {
+                        try
+                        {
+                            d = d.GetType().GetProperty(baseName).GetValue(d); // получим свойство объекта по имени
+                        }
+                        catch
+                        {
+                            // ошибка. Нет такого свойства
+                            result.retCode = -1;
+                            result.retMessage = $"ERROR: PROPERTY '{baseName}' OF VALUE '{data}' IS NOT DEFINED";
+                            return result;
+                        }
+                    }
+                    else
+                    {
+                        // ошибка. Возможно это метод
+                        result.retCode = -1;
+                        result.retMessage = $"ERROR: ELEMENT '{baseName}' OF VALUE '{data}' IS UNKNOWN";
+                        return result;
+                    }
+                }
 
+                // если полученное значение являлось массивом или словарем, то нужно по индексу вычислить значение
+                if (r.lastSearchIndex >= 0)
+                {
                     if (d.GetType().IsGenericType && d.GetType().GetGenericTypeDefinition().IsAssignableFrom(typeof(Dictionary<,>)))
                     {
                         // это словарь. 
                         // возвратим значение из словаря, если в словаре нет такого ключа, то возвратим null
                         string key = Regex.Replace(r.data, @"['""]", "");
                         if (d.ContainsKey(key))
-                            d = d[key];
-                        else if (this.enableDebug)
                         {
-                            // ошибка. Нет такого ключа
-                            throw new Exception($"<-- ERROR: KEY '{key}' of value '{r.data}' IS NOT EXIST -->");
+                            d = d[key];
                         }
                         else
                         {
@@ -969,7 +1060,9 @@ namespace WebServer
                                 catch
                                 {
                                     // ошибка. Индекс массива за пределами диапазона
-                                    throw new Exception($"<-- ERROR: ARRAY '{r.data}' - INDEX OUT OF RANGE -->");
+                                    result.retCode = -1;
+                                    result.retMessage = $"ERROR: EXPRESSION '{field}' - INDEX '{arrayIndex}' OUT OF RANGE";
+                                    return result;
                                 }
                             }
                             else
@@ -982,20 +1075,21 @@ namespace WebServer
                                 catch
                                 {
                                     // ошибка. Значение в квадратных скобках не индекс массива
-                                    throw new Exception($"<-- ERROR: UNKNOWN INDEXER '{r.data}' FOR ARRAY -->");
+                                    result.retCode = -1;
+                                    result.retMessage = $"ERROR: UNKNOWN INDEXER '{r.data}' FOR ARRAY";
+                                    return result;
                                 }
                             }
 
                             r = findPattern(ref f, r.lastSearchIndex, "[", "]");
                         } while (r.lastSearchIndex >= 0);
                     }
-
                 }
             }
 
-            // если возвращаемое значение было равно NULL, то преобразуем его в пустую строку
-            if (d == null) d = string.Empty;
-            return d;
+            result.retCode = 0;
+            result.result = d;
+            return result;
         }
 
 
@@ -1061,14 +1155,14 @@ namespace WebServer
 
             TStack stack = new TStack();
 
-            // преобразование в потсфикс
+            // преобразование в постфикс
             string[] exp = convertExpressionToPostfix(ref infixExpression);
 
             // вычисление
             if (exp == null)
             {
                 // ошибка. нечего парсить
-                throw new Exception($"<-- ERROR: UNKNOWN ERROR IN EXPRESSION (SET enableDebug for more information -->");
+                throw new Exception($"<-- ERROR: UNKNOWN ERROR IN EXPRESSION (SET enableDebug for more information) -->");
             }
 
             foreach (string s in exp)
@@ -1078,26 +1172,18 @@ namespace WebServer
                     // оператор
                     stack.Eval(s);
                 }
-                else if (Regex.IsMatch(s, @"^'.*'$"))
-                {
-                    // строка в одинарных или двойных кавычках
-                    stack.Push(s.Substring(1, s.Length - 2));
-                }
-                else if (s == "true" || s == "false")
-                {
-                    stack.Push(bool.Parse(s));
-                }
                 else
                 {
-                    // полагаем число
-                    try
+                    // переменная
+                    Result r = parseValue(s);
+                    if (r.retCode != 0)
                     {
-                        stack.Push(Convert.ToDouble(s.Replace('.', ',')));
+                        // ошибка
+                        throw new Exception(r.retMessage);
                     }
-                    catch
+                    else
                     {
-                        // ошибка. нечего парсить
-                        throw new Exception($"<-- ERROR: THE VALUE '{s}' MUST BE NUMERIC -->");
+                        stack.Push(r.result);
                     }
                 }
             }
@@ -1257,255 +1343,87 @@ namespace WebServer
         /// <summary>
         /// Произвести унарную операцию с последними двумя числами в стеке.
         /// Операнды удаляются из стека. Результат кладется в стек.
+        /// В случае ошибки генерируется исключение.
         /// </summary>
         /// <param name="op">Операция</param>
-        /// <returns>True - если операция выполнена. Исключение - неизвестный оператор.</returns>
         public void Eval(string op)
         {
-            int err = 0;
-            object x2 = this.Pop();
-            object x1 = this.Pop();
+            dynamic x2 = this.Pop();
+            dynamic x1 = (op != "!" ? this.Pop() : null); // не берем второй операнд, если это однооперандовая операция
             object x = null;
-
-            if (x1 == null)
-                if (x2 is System.String)
-                    x1 = string.Empty;
-                else
-                    x1 = (double)0.0f;
 
             switch (op)
             {
                 case "+":
-                    if (x1 is System.String || x2 is System.String)
-                        x = String.Concat(x1, x2);
-                    else if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 + (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 + x2;
                     break;
 
                 case "-":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 - (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 - x2;
                     break;
 
                 case "*":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 * (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 * x2;
                     break;
 
                 case "/":
-                    if (IsNumericType(x1) && IsNumericType(x2))
+                    if (IsNumericType(x1) && IsNumericType(x2) && (x2 == 0))
                     {
-                        if ((dynamic)x2 == 0)
-                        {
-                            err = 3;
-                        }
-                        else
-                        {
-                            x = (dynamic)x1 / (dynamic)x2;
-                        }
-                        
+                        throw new Exception($"ERROR: DIVISION BY ZERO: {x1} / {x2}");
                     }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 / x2;
                     break;
-
 
                 case "%":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        if ((dynamic)x2 == 0)
-                        {
-                            err = 3;
-                        }
-                        else
-                        {
-                            x = (dynamic)x1 % (dynamic)x2;
-                        }
-
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = x1 % x2;
                     break;
 
-
                 case "^":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = Math.Pow((dynamic)x1, (dynamic)x2);
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = Math.Pow(x1, x2);
                     break;
 
                 case "==":
-                    if (x1.GetType() == x2.GetType())
-                    {
-                        x = x1.Equals(x2);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            x = x1 == x2;
-                        }
-                        catch
-                        {
-                            err = 2;
-                        }
-                    }
+                    x = (x1 == x2);
                     break;
 
                 case "!=":
-                    if (x1.GetType() == x2.GetType())
-                    {
-                        x = !x1.Equals(x2);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            x = x1 != x2;
-                        }
-                        catch
-                        {
-                            err = 2;
-                        }
-                    }
+                    x = (x1 != x2);
                     break;
 
                 case "<":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 < (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 < x2);
                     break;
 
                 case "<=":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 <= (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 <= x2);
                     break;
 
                 case ">":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 > (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 > x2);
                     break;
 
                 case ">=":
-                    if (IsNumericType(x1) && IsNumericType(x2))
-                    {
-                        x = (dynamic)x1 >= (dynamic)x2;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 >= x2);
                     break;
 
                 case "!":
-                    if (x2 is bool)
-                    {
-                        x = !(bool)x2;
-                        if (x1 != null) this.Push(x1);
-                    }
-                    else
-                    {
-                        err = 4;
-                    }
+                    x = !(bool)x2;
                     break;
 
                 case "&&":
-                    if (x1 is bool && x2 is bool)
-                    {
-                        x = (bool)x2 && (bool)x1;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 && x2);
                     break;
 
                 case "||":
-                    if (x1 is bool && x2 is bool)
-                    {
-                        x = (bool)x2 || (bool)x1;
-                    }
-                    else
-                    {
-                        err = 2;
-                    }
+                    x = (x1 || x2);
                     break;
 
                 default:
-                    err = 1;
+                    throw new Exception($"ERROR: UNKNOWN OPERATOR '{op}'");
                     break;
             }
 
-            if (err != 0)
-            {
-                this.Push(x1);
-                this.Push(x2);
-
-                switch (err)
-                {
-                    case 1:
-                        // ошибка. Неизвестный оператор
-                        throw new Exception($"<-- ERROR: UNKNOWN OPERATOR '{op}' -->");
-                    case 2:
-                        // ошибка. Несовместимый с данными операндами оператор
-                        throw new Exception($"<-- ERROR: INCOMPATIBLE OPERAND '{x1}' AND '{x2}' FOR OPERATOR '{op}' -->");
-                    case 3:
-                        // ошибка. Несовместимый с данными операндами оператор
-                        throw new Exception($"<-- ERROR: DIVISION BY ZERO '{x1}' / '{x2}' -->");
-                    case 4:
-                        // ошибка. Несовместимый с данными операндами оператор
-                        throw new Exception($"<-- ERROR: OPERATOR '{op}' IS INCOMPATIBLE WITH OPERAND '{x2}' -->");
-                }
-                
-            }
-            else
-            {
-                this.Push(x);
-            }
+            this.Push(x);
         }
     }
 
@@ -1603,68 +1521,37 @@ namespace WebServer
         }
     }
 
-
     /// <summary>
-    /// Вспомогательный класс для обработки запросов от HttpListener
+    /// Вспомогательный класс для возврата результата вычислений.
     /// </summary>
-    public class TRequest
+    class Result
     {
-        public TRequest(HttpListenerRequest request)
+        /// <summary>
+        /// Код ошибки результата. (Зависит от функции обработки. Например, -1=ошибка, 0-успех).
+        /// По умолчанию после создания = 0.
+        /// </summary>
+        public int retCode;
+
+        /// <summary>
+        /// Сообщение об ошибке (опционально).
+        /// По умолчанию после создания = "".
+        /// </summary>
+        public string retMessage;
+
+        /// <summary>
+        /// Объект результата.
+        /// По умолчанию после создания = null.
+        /// </summary>
+        public dynamic result;
+
+        public Result()
         {
-            this.values = new Dictionary<string, object>();
-            switch (request.HttpMethod)
-            {
-                case "POST":
-                    this.Method = RequestTypes.POST;
-                    break;
-                case "GET":
-                    this.Method = RequestTypes.GET;
-                    break;
-                default:
-                    this.Method = RequestTypes.UNKNOWN;
-                    break;
-            }
-            this.encoding = request.ContentEncoding;
-            this.Route = request.RawUrl.Split('?')[0];
-
-            if (this.Method == RequestTypes.GET)
-            {
-                foreach (string key in request.QueryString.AllKeys)
-                {
-                    this.values.Add(key, request.QueryString[key]);
-                }
-            }
-            else if (this.Method == RequestTypes.POST)
-            {
-                //"application/x-www-form-urlencoded"
-                System.IO.StreamReader reader = new System.IO.StreamReader(request.InputStream, request.ContentEncoding);
-                string s = reader.ReadToEnd();
-                if (s != "")
-                {
-                    string[] values = s.Split('&');
-                    foreach (string value in values)
-                    {
-                        string[] pair = value.Split('=');
-                        this.values.Add(pair[0], HttpUtility.UrlDecode(pair[1]));
-                    }
-                }
-                request.InputStream.Close();
-                reader.Close();
-            }
-        }
-
-        public RequestTypes Method;
-        public string Route;
-        public Encoding encoding;
-        public Dictionary<string, object> values;
-
-        public enum RequestTypes : int
-        {
-            POST,
-            GET,
-            UNKNOWN
+            this.result = null;
+            this.retMessage = "";
+            this.retCode = 0;
         }
     }
+
 
 
     /// <summary>
@@ -1693,4 +1580,21 @@ namespace WebServer
     {% IF value.property %} - где value определено в словаре как data.Add("dict", some_class)
                               если такого свойства нет, то вызовет ошибку
      
+     */
+
+/*
+ public string ParseFromString()
+	- если словарь переданный в функцию равен null, то используем глобальный словарь
+	- расширим шаблон обработав все команды INCLUDE
+	- разберем шаблон на блоки: текст, команда, выражение(переменная) и занесем в лист: templateElements
+	- соберем все обратно вычислив значения
+		- Т-текст. Просто копируем в результат.
+		- V-выражение(переменная). Выполнить функцию EvaluateExpression и получить результат в виде строки.
+		- F-функция. Выполнить действие (IF, FOR ....)
+
+
+public object EvaluateExpression()
+	- если выражение - это выражение присвоения вида "x=y", то вычислим правое значение, присвоем левому и вернем пустое текстовое значение "".
+	- преобразуем выражение к обратной польской записи convertExpressionToPostfix
+	- если convertExpressionToPostfix вернул Null - то исключение пустого выражения (возможно ошибка внутри)
      */
