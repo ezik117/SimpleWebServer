@@ -37,10 +37,11 @@ namespace WebServer
         /// </summary>
         /// <param name="expiredMinutes">Время жизни сессии в минутах. Значение по умолчанию=0, что означет 
         /// что объект никогда не удаляется.</param>
+        /// <param name="sessionID">ID сессии. По умолчанию равно null, т.е. генерируется новый ID.</param>
         /// <returns>Возвращает ссылку на класс SessionData.</returns>
-        public SessionData CreateSession(double expiredMinutes = 0)
+        public SessionData CreateSession(double expiredMinutes = 0, string sessionID = null)
         {
-            SessionData sd = new SessionData(expiredMinutes);
+            SessionData sd = new SessionData(expiredMinutes, sessionID);
             sd.SetInUse();
             bool res = sessionData.TryAdd(sd.sessionId, sd);
             if (!res) throw new Exception("The sessin cannot be created");
@@ -59,7 +60,7 @@ namespace WebServer
 
             try
             {
-                SessionData sd = sessionData[sessionId];
+                SessionData sd = this.sessionData[sessionId];
                 if (sd.IsExpired()) return null;
                 sd.SetInUse();
                 return sd;
@@ -102,6 +103,32 @@ namespace WebServer
         public bool DeleteSession(string sessionId)
         {
             return sessionData.TryRemove(sessionId, out SessionData temp);
+        }
+
+        public void SessionSetKey(ref SessionData session, string key, string value)
+        {
+            if (session == null) session = this.CreateSession();
+            session.Set(key, value);
+        }
+
+        public void SessionDeleteKey(ref SessionData session, string key)
+        {
+            if (session == null) return;
+
+            if (session.keys.ContainsKey(key)) session.keys.Remove(key);
+
+            if (session.keys.Count == 0)
+            {
+                this.DeleteSession(session.sessionId);
+                session = null;
+            }
+        }
+
+        public void SessionClear(ref SessionData session)
+        {
+            if (session == null) return;
+            this.DeleteSession(session.sessionId);
+            session = null;
         }
 
         /// <summary>
@@ -147,11 +174,17 @@ namespace WebServer
     {
         /// <summary>
         /// Конструктор. Создает объект сессии с указанным временем жизни.
+        /// Объект сессии может быть с новым session ID или с заданным.
         /// </summary>
         /// <param name="expiredMinutes">Время жизни объекта в минутах.</param>
-        public SessionData(double expiredMinutes)
+        /// <param name="sessionID">ID сессии. По умолчанию равно null, т.е. генерируется новый ID.</param>
+        public SessionData(double expiredMinutes, string sessionID = null)
         {
-            this.sessionId = ((SessionIDManager)(new SessionIDManager())).CreateSessionID(null);
+            if (sessionID == null)
+                this.sessionId = ((SessionIDManager)(new SessionIDManager())).CreateSessionID(null);
+            else
+                this.sessionId = sessionID;
+
             this.keys = new Dictionary<string, object>();
             this.expiration = expiredMinutes;
         }
@@ -248,7 +281,10 @@ namespace WebServer
         /// <param name="value">Значение.</param>
         public void Set(string key, object value)
         {
-            this.keys.Add(key, value);
+            if (!this.keys.ContainsKey(key))
+                this.keys.Add(key, value);
+            else
+                this.keys[key] = value;
         }
 
         /// <summary>
@@ -287,6 +323,15 @@ namespace WebServer
  - на выходе из обработки HTTP запроса проверяется, есть ли в словаре данных сессии хоть один ключ
  - если ключей нет, то куки "SSID" не создаются, вызывается метод 
  - если ключи есть, то передаются куки "SSID" с ID сессии
+
+    Взаимодействие с сессиями напрямую не рекомендуется. Только через методы менджера сессий.
+
+    Сессия создается, когда пользователь создает первый ключ в сессии. SessionSetKey(session, key, value)
+    Сессия удаляется, когда удаляется последний ключ в сессии. SessionDeleteKey(session, key)
+    Сессия удаляется, когда пользователь удаляет все ключи сессии. SessionClear(session)
+    Получить значение ключа сессии, SessionGetKey(session, key, defaultValue) или напрямую из объекта сессии session
+
+    В контексте запроса пользователю передается ссылка на Менеджер сессий и на объект текущей сессии.
 
      
      */

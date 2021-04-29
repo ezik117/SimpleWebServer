@@ -11,7 +11,7 @@
 
     {% INCLUDE 'header.html' %}
 
-    <span style="font-size:70%; margin:3px;">Generated: {{date}}</span>
+    <span style="font-size:70%; margin:3px;">Generated: {{ date }}</span>
 
     <table class="table table-sm">
         <thead>
@@ -23,8 +23,8 @@
         <tbody>
             {% FOR row IN pcInfo %}
             <tr>
-                <td>{{row.Key}}</td>
-                <td>{{row.Value}}</td>
+                <td>{{ row.Key }}</td>
+                <td>{{ row.Value }}</td>
             </tr>
             {% ENDFOR %}
         </tbody>

@@ -144,8 +144,18 @@ namespace WebServer
                 if (userResponse.redirectUrl != "")
                 {
                     // пользовательская функция вызвала метод перенаправления (redirect)
-                    bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session.sessionId);
-                    if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId)); // задать куки с номером сессии
+                    if (rc.session != null)
+                        response.AppendCookie(new Cookie("SSID", rc.session.sessionId));
+                    else
+                    {
+                        if (request.Cookies["SSID"] != null)
+                        {
+                            // удалить сессионные cookie
+                            response.AppendCookie(request.Cookies["SSID"]);
+                            response.Cookies["SSID"].Expired = true;
+                            response.Cookies["SSID"].Discard = true;
+                        }
+                    }
 
                     response.Redirect(userResponse.redirectUrl);
                     response.OutputStream.Close();
@@ -153,8 +163,20 @@ namespace WebServer
                 else
                 {
                     // вернем в браузер ответ пользовательской функции
-                    bool isSessionDelete = rc.sessionManager.LeaveSession(rc.session?.sessionId);
-                    if (!isSessionDelete) response.AppendCookie(new Cookie("SSID", rc.session.sessionId));
+
+                    // установим или удалим сессионные cookie
+                    if (rc.session != null)
+                        response.AppendCookie(new Cookie("SSID", rc.session.sessionId));
+                    else
+                    {
+                        if (request.Cookies["SSID"] != null)
+                        {
+                            // удалить сессионные cookie
+                            response.AppendCookie(request.Cookies["SSID"]);
+                            response.Cookies["SSID"].Expired = true;
+                            response.Cookies["SSID"].Discard = true;
+                        }
+                    }
 
                     byte[] buffer = System.Text.Encoding.GetEncoding(this.responseCodePage).GetBytes(userResponse.responseString);
 
@@ -214,7 +236,7 @@ namespace WebServer
                 else
                 {
                     // если сервер использует режим хранения ресурсов в сборке EXE
-                    string embeddedResourceName = $"{Assembly.GetExecutingAssembly().GetName().Name}.Resources.{rc.Route}";
+                    string embeddedResourceName = $"{Assembly.GetExecutingAssembly().GetName().Name}.Resources.{rc.Route.TrimStart('\\', '/')}";
                     string extension = Path.GetExtension(rc.Route);
 
                     // проверим что запрашиваемый ресурс в списке разрешенных
@@ -270,7 +292,8 @@ namespace WebServer
         }
 
         /// <summary>
-        /// Парсинг запроса.
+        /// Разбирает запрос и создает контекст запроса. В контест передаются данные о методе запроса,
+        /// переменных, данные о сессии, маршрут и т.п.
         /// </summary>
         /// <param name="request">Объект контекста запроса.</param>
         /// <returns>Класс RequestContext.</returns>
@@ -278,7 +301,8 @@ namespace WebServer
         {
             RequestContext rc = new RequestContext
             {
-                variables = new Dictionary<string, object>(),
+                templateVariables = new Dictionary<string, object>(),
+                parameters = new Dictionary<string, object>(),
                 Method = (RequestMethod)Enum.Parse(typeof(RequestMethod), request.HttpMethod.ToString().ToUpper()),
                 Route = request.RawUrl.Split('?')[0],
                 sessionManager = this.sm,
@@ -287,7 +311,7 @@ namespace WebServer
                 redirect = ""
             };
 
-            rc.variables.Add("session", rc.session?.keys);
+            rc.templateVariables.Add("session", rc.session?.keys);
 
             if (rc.Method == RequestMethod.GET)
             {
@@ -435,11 +459,32 @@ namespace WebServer
     class RequestContext
     {
         // ---- основные параметры
-        public RequestMethod Method; // метод: GET, POST...
-        public string Route; // запрошенный URL начинающийся с "/"
-        public Dictionary<string, object> parameters; // словарь параметров запроса
-        public SessionData session; // ссылка на объект пользовательской сессии
-        public Dictionary<string, object> variables;
+
+        /// <summary>
+        /// Метод запроса (GET, POST...)
+        /// </summary>
+        public RequestMethod Method;
+
+        /// <summary>
+        /// Запрошенный URL начинающийся с "/"
+        /// </summary>
+        public string Route;
+
+        /// <summary>
+        /// Словарь параметров запроса
+        /// </summary>
+        public Dictionary<string, object> parameters;
+
+        /// <summary>
+        /// Словарь переменных для класса TemplateParser.
+        /// Создан для удобства, что бы не создавать пользователем.
+        /// </summary>
+        public Dictionary<string, object> templateVariables;
+
+        /// <summary>
+        /// Прямая ссылка на объект пользовательской сессии
+        /// </summary>
+        public SessionData session;
 
         // ---- расширенные параметры
         public HttpListenerRequest baseRequest; // ссылка на базовый объект запроса
@@ -447,17 +492,27 @@ namespace WebServer
         public string redirect; // если установлен, то ссылка перехода
 
         // ---- методы
+
         /// <summary>
         /// Возвращает значение параметра полученного через GET/POST. Данный метод более
         /// предпочтительней, чем прямой доступ к словарю values.
         /// </summary>
         /// <param name="name">Имя параметра.</param>
-        /// /// <param name="defaultValue">Значене по умолчанию, если параметра нет в списке.
+        /// <param name="defaultValue">Значене по умолчанию, если параметра нет в списке.
         /// По умолчанию возвращается пустая строка.</param>
         /// <returns>Значение параметра или пустая строка, если параметр не задан.</returns>
-        public string GetValue(string name, string defaultValue = "")
+        public string GetParam(string name, string defaultValue = "")
         {
             return (parameters.ContainsKey(name) ? parameters[name].ToString() : defaultValue);
+        }
+
+        /// <summary>
+        /// Возвращает количество параметров в запросе.
+        /// </summary>
+        /// <returns>Количество параметров в запросе</returns>
+        public int GetParamsCount()
+        {
+            return parameters.Count;
         }
     }
 

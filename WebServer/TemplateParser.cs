@@ -465,7 +465,7 @@ namespace WebServer
                                         }
                                         else
                                         {
-                                            templateElements[cursor].aux1 = (System.Collections.IEnumerator)v.GetEnumerator();
+                                            templateElements[cursor].aux1 = (System.Collections.IEnumerator)v.result.GetEnumerator();
                                         }
                                     }
                                 }
@@ -1030,7 +1030,12 @@ namespace WebServer
                 // если полученное значение являлось массивом или словарем, то нужно по индексу вычислить значение
                 if (r.lastSearchIndex >= 0)
                 {
-                    if (d.GetType().IsGenericType && d.GetType().GetGenericTypeDefinition().IsAssignableFrom(typeof(Dictionary<,>)))
+                    if (d == null)
+                    {
+                        // значение равно null, дальнейшая обработка бессмысленна
+                        return result; // result=null, retCode=0
+                    }
+                    else if (d.GetType().IsGenericType && d.GetType().GetGenericTypeDefinition().IsAssignableFrom(typeof(Dictionary<,>)))
                     {
                         // это словарь. 
                         // возвратим значение из словаря, если в словаре нет такого ключа, то возвратим null
