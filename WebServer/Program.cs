@@ -8,20 +8,6 @@ namespace WebServer
     {
         static void Main(string[] args)
         {
-            TemplateParser tp = new TemplateParser();
-
-            string r = tp.ParseFromString(@"
-{{ x=1 }}
-{{ x[0] }}
-
-");
-
-
-            Console.WriteLine(r);
-
-            Console.ReadKey(true);
-            return;
-
             WebServerV1 www = new WebServerV1
             {
                 useEmbeddedResources = true
