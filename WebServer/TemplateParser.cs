@@ -37,7 +37,7 @@ namespace WebServer
 
             this.templateElements = new List<_Template_Element>();
         }
-
+    
 
         /// <summary>
         /// Словарь внутренних переменных
@@ -56,6 +56,7 @@ namespace WebServer
         /// </summary>
         private List<_Template_Element> templateElements;
 
+
         /// <summary>
         /// Внутренняя переменная для функции ParseFromString. Показывает что при разборе нужно
         /// использовать встроенные файлы (например, при команде {% INCLUDE '' %}
@@ -63,11 +64,13 @@ namespace WebServer
         /// </summary>
         private bool useEmbeddedFiles;
 
+
         /// <summary>
         /// Если установлено как true - то в случае отсутствия ключей или переменных вызывает ошибку.
         /// По умолчанию равно false.
         /// </summary>
         public bool enableDebug;
+
 
         /// <summary>
         /// Сохраняет строку в указанном файле. Старый файл перезаписывается.
@@ -560,6 +563,7 @@ namespace WebServer
                 return ex.Message;
             }
         }
+
 
         /// <summary>
         /// Собирает шаблон с учетом вложенных подшаблонов (загрузка из файла).
@@ -1237,6 +1241,9 @@ namespace WebServer
     }
 
 
+    /// <summary>
+    /// Стек для функций IF, FOR ...
+    /// </summary>
     class TBaseStack
     {
         /// <summary>
@@ -1307,11 +1314,10 @@ namespace WebServer
         }
     }
 
+
     /// <summary>
     /// Стек для вычисления обратной польской записи с поддержкой скобок.
-    /// Умеет работать с числами и строками.
-    /// Числа всегда double. Для них могут выполнятся следующие действия: ^ * / + -
-    /// Для строк выполняется только сложение как конкатенация. Допускается сложение строк и чисел (как строк).
+    /// Поддерживает все скалярные типы данных.
     /// </summary>
     class TStack : Stack<object>
     {
@@ -1521,6 +1527,7 @@ namespace WebServer
         }
     }
 
+
     /// <summary>
     /// Вспомогательный класс для возврата результата вычислений.
     /// </summary>
@@ -1555,7 +1562,7 @@ namespace WebServer
 
 
     /// <summary>
-    /// Статический класс, содержащий вспомогательные функции
+    /// Статический класс, содержащий вспомогательные функции.
     /// </summary>
     public static class TemplateParserUtilities
     {

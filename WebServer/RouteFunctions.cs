@@ -325,32 +325,6 @@ namespace WebServer
             }
         }
 
-
-        // ----------------------------------------------------------------------------------------
-        // Route: "/test"
-        public static ResponseContext Test(RequestContext context)
-        {
-            if (context.GetParamsCount() == 0)
-            {
-                // запрос чистой страницы
-                TemplateParser tp = new TemplateParser();
-                string ret = tp.ParseFromString(@"<html><body><a href=""/test?a=1"">set cookie</a><br><a href=""/test?a=2"">clear cookie</a></body></html>");
-                return new ResponseContext(ret);
-            }
-            else
-            {
-                if (context.GetParam("a") == "1")
-                {
-                    context.sessionManager.SessionSetKey(ref context.session, "abc", "123");
-                }
-                else if (context.GetParam("a") == "2")
-                {
-                    context.sessionManager.SessionClear(ref context.session);
-                }
-            }
-
-            return new ResponseContext("", "/test");
-        }
     }
 }
 

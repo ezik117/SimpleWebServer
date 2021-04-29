@@ -24,13 +24,13 @@ namespace WebServer
         /// <summary>
         /// веб-сервер
         /// </summary>
-        private HttpListener webSrv = new HttpListener();
+        private readonly HttpListener webSrv = new HttpListener();
 
         /// <summary>
         /// Поток обработки входящих запросов. 
         /// При получении запроса, создает дочерний поток в который передает контекст запроса.
         /// </summary>
-        Thread httpDispatcher;
+        private readonly Thread httpDispatcher;
 
         /// <summary>
         /// флаг остановки потока обработки web сервера
@@ -42,11 +42,6 @@ namespace WebServer
         /// По умолчанию "UTF-8". Для кириллицы из кода Visual Studio должна быть "windows-1251".
         /// </summary>
         public string responseCodePage;
-
-        /// <summary>
-        /// Срок хранения сессий на сервере в минутах. По умолчанию 1 день.
-        /// </summary>
-        public double sessionDuration;
 
         /// <summary>
         /// Задает место расположения статического контента, в случае если он является внешним,
@@ -70,7 +65,7 @@ namespace WebServer
         /// <summary>
         /// Таблица переходов.
         /// </summary>
-        private Dictionary<string, RouteFunction> routeTable = new Dictionary<string, RouteFunction>();
+        private readonly Dictionary<string, RouteFunction> routeTable = new Dictionary<string, RouteFunction>();
 
         /// <summary>
         /// Конструктор. Запускает веб сервер на прослушивание и обработку запросов.
@@ -80,7 +75,6 @@ namespace WebServer
         {
             // зададим параметры
             this.responseCodePage = "UTF-8";
-            this.sessionDuration = 24 * 60;
             this.staticContent = "";
             this.useEmbeddedResources = false;
 
@@ -90,9 +84,11 @@ namespace WebServer
             this.webSrv.Start();
 
             // запустим поток обработки клиентских запросов
-            this.httpDispatcher = new Thread(this.Listen);
-            this.httpDispatcher.Priority = ThreadPriority.AboveNormal;
-            this.httpDispatcher.IsBackground = true;
+            this.httpDispatcher = new Thread(this.Listen)
+            {
+                Priority = ThreadPriority.AboveNormal,
+                IsBackground = true
+            };
             this.httpDispatcher.Start();
         }
 
@@ -126,7 +122,7 @@ namespace WebServer
         /// Обработка пользовательского запроса в отдельном потоке.
         /// </summary>
         /// <param name="context">Контекст запроса</param>
-        void ProcessRequest(object context)
+        private void ProcessRequest(object context)
         {
             HttpListenerContext ctx = (HttpListenerContext)context;
 
@@ -303,13 +299,12 @@ namespace WebServer
             RequestContext rc = new RequestContext
             {
                 templateVariables = new Dictionary<string, object>(),
-                parameters = new Dictionary<string, object>(),
+                parameters = new Dictionary<string, string>(),
                 Method = (RequestMethod)Enum.Parse(typeof(RequestMethod), request.HttpMethod.ToString().ToUpper()),
                 Route = request.RawUrl.Split('?')[0],
                 sessionManager = this.sm,
                 session = sm.GetSession(request.Cookies["SSID"]?.Value),
-                baseRequest = request,
-                redirect = ""
+                baseRequest = request
             };
 
             rc.templateVariables.Add("session", rc.session?.keys);
@@ -474,7 +469,7 @@ namespace WebServer
         /// <summary>
         /// Словарь параметров запроса
         /// </summary>
-        public Dictionary<string, object> parameters;
+        public Dictionary<string, string> parameters;
 
         /// <summary>
         /// Словарь переменных для класса TemplateParser.
@@ -490,7 +485,6 @@ namespace WebServer
         // ---- расширенные параметры
         public HttpListenerRequest baseRequest; // ссылка на базовый объект запроса
         public SessionManager sessionManager; // ссылка на менеджер сессий
-        public string redirect; // если установлен, то ссылка перехода
 
         // ---- методы
 
@@ -504,7 +498,7 @@ namespace WebServer
         /// <returns>Значение параметра или пустая строка, если параметр не задан.</returns>
         public string GetParam(string name, string defaultValue = "")
         {
-            return (parameters.ContainsKey(name) ? parameters[name].ToString() : defaultValue);
+            return (parameters.ContainsKey(name) ? parameters[name] : defaultValue);
         }
 
         /// <summary>
