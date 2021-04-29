@@ -42,7 +42,7 @@ namespace WebServer
         /// <summary>
         /// Словарь внутренних переменных
         /// </summary>    
-        private Dictionary<string, object> intVals;
+        private readonly Dictionary<string, object> intVals;
 
 
         /// <summary>
@@ -222,8 +222,10 @@ namespace WebServer
                     if (m.Index != lastBlockStartPosition)
                     {
                         // перед этим был кусок текста, его надо сохранить в неизменном виде
-                        _Template_Element el = new _Template_Element("T", templateElementCurrentNr);
-                        el.expression = template.Substring(lastBlockStartPosition, m.Index - lastBlockStartPosition);
+                        _Template_Element el = new _Template_Element("T", templateElementCurrentNr)
+                        {
+                            expression = template.Substring(lastBlockStartPosition, m.Index - lastBlockStartPosition)
+                        };
                         templateElements.Add(el);
 
                         templateElementCurrentNr++;
@@ -242,8 +244,10 @@ namespace WebServer
 
                     // количество вручную заданных пробелов слева
                     {
-                        _Template_Element el = new _Template_Element("SPACES", templateElementCurrentNr);
-                        el.expression = m.Groups[grSpCountL].Value.Remove(m.Groups[grSpCountL].Value.Length - 1);
+                        _Template_Element el = new _Template_Element("SPACES", templateElementCurrentNr)
+                        {
+                            expression = m.Groups[grSpCountL].Value.Remove(m.Groups[grSpCountL].Value.Length - 1)
+                        };
                         templateElements.Add(el);
                         templateElementCurrentNr++;
                     }
@@ -252,8 +256,10 @@ namespace WebServer
                     if (m.Groups[grType].Value == "{")
                     {
                         // это переменная или выражение
-                        _Template_Element el = new _Template_Element("V", templateElementCurrentNr);
-                        el.expression = m.Groups[grExp].Value.Trim();
+                        _Template_Element el = new _Template_Element("V", templateElementCurrentNr)
+                        {
+                            expression = m.Groups[grExp].Value.Trim()
+                        };
                         templateElements.Add(el);
 
                         templateElementCurrentNr++;
@@ -272,9 +278,11 @@ namespace WebServer
                         if (n_for.Success)
                         {
                             // FOR
-                            _Template_Element el = new _Template_Element("F", templateElementCurrentNr);
-                            el.value = n_for.Groups[1].Value.Trim();
-                            el.expression = n_for.Groups[2].Value.Trim();
+                            _Template_Element el = new _Template_Element("F", templateElementCurrentNr)
+                            {
+                                value = n_for.Groups[1].Value.Trim(),
+                                expression = n_for.Groups[2].Value.Trim()
+                            };
                             templateElements.Add(el);
                             stack_for.Push(templateElementCurrentNr);
 
@@ -283,8 +291,10 @@ namespace WebServer
                         else if (n_breakif.Success)
                         {
                             // BREAKIF
-                            _Template_Element el = new _Template_Element("BI", templateElementCurrentNr);
-                            el.expression = n_breakif.Groups[1].Value.Trim();
+                            _Template_Element el = new _Template_Element("BI", templateElementCurrentNr)
+                            {
+                                expression = n_breakif.Groups[1].Value.Trim()
+                            };
                             templateElements.Add(el);
                             if (stack_for.Count == 0)
                             {
@@ -313,8 +323,10 @@ namespace WebServer
                         else if (n_if.Success)
                         {
                             // IF
-                            _Template_Element el = new _Template_Element("I", templateElementCurrentNr);
-                            el.expression = n_if.Groups[1].Value.Trim();
+                            _Template_Element el = new _Template_Element("I", templateElementCurrentNr)
+                            {
+                                expression = n_if.Groups[1].Value.Trim()
+                            };
                             templateElements.Add(el);
                             stack_if.Push(templateElementCurrentNr);
 
@@ -352,8 +364,10 @@ namespace WebServer
 
                     // количество вручную заданных пробелов справа
                     {
-                        _Template_Element el = new _Template_Element("SPACES", templateElementCurrentNr);
-                        el.expression = m.Groups[grSpCountR].Value.Remove(m.Groups[grSpCountR].Value.Length - 1);
+                        _Template_Element el = new _Template_Element("SPACES", templateElementCurrentNr)
+                        {
+                            expression = m.Groups[grSpCountR].Value.Remove(m.Groups[grSpCountR].Value.Length - 1)
+                        };
                         templateElements.Add(el);
                         templateElementCurrentNr++;
                     }
@@ -372,8 +386,10 @@ namespace WebServer
                 if (lastBlockStartPosition < template.Length)
                 {
                     // завершающий кусок текста
-                    _Template_Element el = new _Template_Element("T", templateElementCurrentNr);
-                    el.expression = template.Substring(lastBlockStartPosition, template.Length - lastBlockStartPosition);
+                    _Template_Element el = new _Template_Element("T", templateElementCurrentNr)
+                    {
+                        expression = template.Substring(lastBlockStartPosition, template.Length - lastBlockStartPosition)
+                    };
 
                     templateElements.Add(el);
 
@@ -457,7 +473,7 @@ namespace WebServer
                                     else
                                     {
                                         //dynamic v = getDictionaryValue((string)templateElements[cursor].expression);
-                                        dynamic v = parseValue((string)templateElements[cursor].expression);
+                                        dynamic v = ParseValue((string)templateElements[cursor].expression);
                                         if (v == null)
                                         {
                                             // ошибка. Неизвестная переменная
@@ -616,27 +632,6 @@ namespace WebServer
             return result;
         }
 
-        /// <summary>
-        /// Конвертирует строку из одной кодировки в другую.
-        /// </summary>
-        /// <param name="text">Строка для перекодирования.</param>
-        /// <param name="fromEncodingStr">Кодировка исходной строки.</param>
-        /// <param name="toEncodingStr">Требуемая кодировка.</param>
-        /// <returns>Перекодированная строка.</returns>
-        public static string ConvertString(string text, string fromEncodingStr, string toEncodingStr)
-        {
-            try
-            {
-                Encoding fromEnc = System.Text.Encoding.GetEncoding(fromEncodingStr);
-                Encoding toEnc = System.Text.Encoding.GetEncoding(toEncodingStr);
-                byte[] bytes = fromEnc.GetBytes(text);
-                return toEnc.GetString(bytes);
-            }
-            catch (Exception ex)
-            {
-                return ex.Message;
-            }
-        }
 
         /// <summary>
         /// Генератор для функции RANGE(from, to, step)
@@ -644,9 +639,9 @@ namespace WebServer
         public class RangeGenerator : IEnumerator
         {
             private dynamic current;
-            private dynamic start;
-            private dynamic stop;
-            private dynamic step;
+            private readonly dynamic start;
+            private readonly dynamic stop;
+            private readonly dynamic step;
 
 
             public RangeGenerator(dynamic start, dynamic stop, dynamic step)
@@ -692,7 +687,7 @@ namespace WebServer
         /// По умолчанию = false.</param>
         /// <returns>Если onlyCheck=false, то возвращается значение из словаря. Исключение если не найдено.
         /// Если onlyCheck=true, то возвращает true, если значение найдено в словарях, иначе false.</returns>
-        private dynamic getDictionaryValue(string key, bool onlyCheck=false)
+        private dynamic GetDictionaryValue(string key, bool onlyCheck=false)
         {
             dynamic x = null;
             bool valExists = false;
@@ -738,13 +733,13 @@ namespace WebServer
         /// </summary>
         /// <param name="exp">Строка в инфиксной записи</param>
         /// <returns>Массив строк в постфиксной записи. Exception если ошибка обработки.</returns>
-        private string[] convertExpressionToPostfix(ref string infixExpression)
+        private string[] ConvertExpressionToPostfix(ref string infixExpression)
         {
             List<string> stack = new List<string>();
             List<string> outbound = new List<string>();
 
             // разделим элементы (символы разделения добавляются спереди или сзади знаков ^*/+-()
-            string separators = "(" + operators.opsList() + ")" + @"(?=([^']*'[^']*')*[^']*$)";
+            string separators = "(" + Operators.OpsList() + ")" + @"(?=([^']*'[^']*')*[^']*$)";
             string expression = Regex.Replace(infixExpression, separators, "\0$0\0");
             string[] inbound_temp = expression.Split(new char[] { '\0' }, StringSplitOptions.RemoveEmptyEntries);
             List<string> inbound = new List<string>();
@@ -839,11 +834,11 @@ namespace WebServer
                     // строка
                     outbound.Add(v);
                 }
-                else if (Regex.IsMatch(v, operators.opsList()))
+                else if (Regex.IsMatch(v, Operators.OpsList()))
                 { 
                     // оператор
                     if (stack.Count > 0)
-                        while (operators.CompareIfFirstGreaterOrEqual(stack.Last(), v))
+                        while (Operators.CompareIfFirstGreaterOrEqual(stack.Last(), v))
                         {
                             outbound.Add(stack.Last());
                             stack.RemoveAt(stack.Count - 1);
@@ -881,7 +876,7 @@ namespace WebServer
         /// </summary>
         /// <param name="data">Ссылка на строку содержающую переменную</param>
         /// <returns>Возвращает класс с значением переменной с ее исходным типом.</returns>
-        private Result parseValue(string data)
+        private Result ParseValue(string data)
         {
             Result result = new Result();
 
@@ -964,7 +959,7 @@ namespace WebServer
             foreach (string field in fields) // для каждой части переменной
             {
                 string f = field;
-                var r = findPattern(ref f, 0, "[", "]"); // проверим нет ли признака массива
+                var r = FindPattern(ref f, 0, "[", "]"); // проверим нет ли признака массива
                 string baseName = field;
                 if (r.lastSearchIndex >= 0) // если это массив то имя базы вычисляется по другому
                     baseName = field.Substring(0, r.firstSearchIndex);
@@ -972,7 +967,7 @@ namespace WebServer
                 // если это первая часть переменной (база), то получим ее значение из словаря)
                 if (firstField)
                 {
-                    if (!this.getDictionaryValue(baseName, onlyCheck:true)) // найдем значение базы в словаре
+                    if (!this.GetDictionaryValue(baseName, onlyCheck:true)) // найдем значение базы в словаре
                     {
                         // ошибка. Нет такой переменной в словаре
                         result.retCode = -1;
@@ -982,7 +977,7 @@ namespace WebServer
                     else
                     {
                         firstField = false;
-                        d = this.getDictionaryValue(baseName);
+                        d = this.GetDictionaryValue(baseName);
                     }
                 }
                 else
@@ -1055,8 +1050,7 @@ namespace WebServer
                         do
                         {
                             string evaluatedIndex = EvaluateExpression(r.data).ToString();
-                            int arrayIndex;
-                            if (int.TryParse(evaluatedIndex, out arrayIndex))
+                            if (int.TryParse(evaluatedIndex, out int arrayIndex))
                             {
                                 try
                                 {
@@ -1086,7 +1080,7 @@ namespace WebServer
                                 }
                             }
 
-                            r = findPattern(ref f, r.lastSearchIndex, "[", "]");
+                            r = FindPattern(ref f, r.lastSearchIndex, "[", "]");
                         } while (r.lastSearchIndex >= 0);
                     }
                 }
@@ -1122,10 +1116,12 @@ namespace WebServer
         /// <param name="patternStart">Строка начала паттерна</param>
         /// <param name="patternEnd">Строка окончания паттерна</param>
         /// <returns>Структура TSearchInfo</returns>
-        TSearchInfo findPattern(ref string T, int fromPos, string patternStart, string patternEnd)
+        TSearchInfo FindPattern(ref string T, int fromPos, string patternStart, string patternEnd)
         {
-            TSearchInfo res = new TSearchInfo();
-            res.firstSearchIndex = T.IndexOf(patternStart, fromPos);
+            TSearchInfo res = new TSearchInfo
+            {
+                firstSearchIndex = T.IndexOf(patternStart, fromPos)
+            };
             if (res.firstSearchIndex >= 0)
             {
                 res.lastSearchIndex = T.IndexOf(patternEnd, res.firstSearchIndex + patternStart.Length);
@@ -1161,7 +1157,7 @@ namespace WebServer
             TStack stack = new TStack();
 
             // преобразование в постфикс
-            string[] exp = convertExpressionToPostfix(ref infixExpression);
+            string[] exp = ConvertExpressionToPostfix(ref infixExpression);
 
             // вычисление
             if (exp == null)
@@ -1172,7 +1168,7 @@ namespace WebServer
 
             foreach (string s in exp)
             {
-                if (operators.Exists(s))
+                if (Operators.Exists(s))
                 {
                     // оператор
                     stack.Eval(s);
@@ -1180,7 +1176,7 @@ namespace WebServer
                 else
                 {
                     // переменная
-                    Result r = parseValue(s);
+                    Result r = ParseValue(s);
                     if (r.retCode != 0)
                     {
                         // ошибка
@@ -1425,7 +1421,6 @@ namespace WebServer
 
                 default:
                     throw new Exception($"ERROR: UNKNOWN OPERATOR '{op}'");
-                    break;
             }
 
             this.Push(x);
@@ -1437,7 +1432,7 @@ namespace WebServer
     /// <summary>
     /// Класс содержащий операторы и их приоритеты. Содержит методы по извлечению и сравнению приоритетов.
     /// </summary>
-    static class operators
+    static class Operators
     {
         private static Dictionary<string, int> ops = new Dictionary<string, int>()
             {
@@ -1495,7 +1490,7 @@ namespace WebServer
         /// Список собирается таким образом, что бы слева были длинные операторы.
         /// </summary>
         /// <returns></returns>
-        public static string opsList()
+        public static string OpsList()
         {
             string ret = "";
 
@@ -1560,17 +1555,71 @@ namespace WebServer
 
 
     /// <summary>
-    /// Вспомогательный класс для обработки JSON объектов
+    /// Статический класс, содержащий вспомогательные функции
     /// </summary>
-    public static class TJson
+    public static class TemplateParserUtilities
     {
+        /// <summary>
+        /// Преобразует объект к формату JSON.
+        /// </summary>
+        /// <param name="o">Объект для сериализации.</param>
+        /// <returns>Строка в формате JSON.</returns>
         public static string ConvertToJson(object o)
         {
             var serializer = new JavaScriptSerializer();
             return serializer.Serialize(o);
         }
 
-        public static string quoted(string text) => $"\"{text}\"";
+        /// <summary>
+        /// Обрамляет текст в двойные кавычки.
+        /// </summary>
+        /// <param name="text">Входной текст.</param>
+        /// <returns>Строка в двойных кавычках.</returns>
+        public static string QuoteDouble(string text) => $"\"{text}\"";
+
+        /// <summary>
+        /// Обрамляет текст в одинарные кавычки.
+        /// </summary>
+        /// <param name="text">Входной текст.</param>
+        /// <returns>Строка в одинарных кавычках.</returns>
+        public static string QuoteSingle(string text) => $"'{text}'";
+
+        /// <summary>
+        /// Удаляет крайние одинарные или двойные обрамляющие кавычки.
+        /// </summary>
+        /// <param name="text">Входной текст.</param>
+        /// <returns>Текст без кавычек.</returns>
+        public static string Dequote(string text)
+        {
+            if (text != string.Empty)
+            {
+                if (text[0] == '\'' && text[text.Length - 1] == '\'') text = text.Trim('\'');
+                else if (text[0] == '"' && text[text.Length - 1] == '"') text = text.Trim('"');
+            }
+            return text;
+        }
+
+        /// <summary>
+        /// Конвертирует строку из одной кодировки в другую.
+        /// </summary>
+        /// <param name="text">Строка для перекодирования.</param>
+        /// <param name="fromEncodingStr">Кодировка исходной строки.</param>
+        /// <param name="toEncodingStr">Требуемая кодировка.</param>
+        /// <returns>Перекодированная строка.</returns>
+        public static string ConvertString(string text, string fromEncodingStr, string toEncodingStr)
+        {
+            try
+            {
+                Encoding fromEnc = System.Text.Encoding.GetEncoding(fromEncodingStr);
+                Encoding toEnc = System.Text.Encoding.GetEncoding(toEncodingStr);
+                byte[] bytes = fromEnc.GetBytes(text);
+                return toEnc.GetString(bytes);
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
     }
 }
 

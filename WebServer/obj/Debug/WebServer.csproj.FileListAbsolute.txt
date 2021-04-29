@@ -6,4 +6,3 @@ D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.exe
 D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.pdb
 D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.Properties.Resources.resources
 D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.csproj.GenerateResource.cache
-D:\PROJECTS\CPP\021. Web server\WebServer\obj\Debug\WebServer.csprojAssemblyReference.cache

@@ -246,7 +246,7 @@ namespace WebServer
                             arr.Add(buf);
                     }
 
-                    return new ResponseContext(TJson.ConvertToJson(arr));
+                    return new ResponseContext(TemplateParserUtilities.ConvertToJson(arr));
                 }
             }
 
