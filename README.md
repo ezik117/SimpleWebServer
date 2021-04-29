@@ -81,7 +81,7 @@ static class RouteFunctions
   <button type="submit">
 </form>
 
-<form method="GET">
+<form method="GET" action="/person">
   <input name="gender">
   <button type="submit">
 </form>
@@ -118,5 +118,39 @@ static class RouteFunctions
 ### Использование пользовательской сессии
 
 ```C#
+// Route: "/logon"
+public static ResponseContext Logon(RequestContext context)
+{
+    if (context.GetParam("login") == "test" && context.GetParam("password") == "1")
+    {
+        // сессия создается автоматически, как только есть хоть один ключ
+        // по умолчанию создается сеансная сессия
+        context.sessionManager.SessionSetKey(ref context.session, "user", "test");
 
+        // можно вручную установить время сессии. здесь - 24 часа.
+        context.session.expiration = 60*24;
+    }
+}
+
+// Route: "/logout"
+public static ResponseContext Logout(RequestContext context)
+{
+    context.sessionManager.SessionClear(ref context.session);
+}
+
+// Route: "/page1"
+public static ResponseContext Page1(RequestContext context)
+{
+    // проверим доступ
+    if (context.sessionManager.SessionGetKey(context.session, "user") == null)
+    {
+        // пользователь неавторизован - редирект на главную страницу
+        return new ResponseContext("", "/");
+    }
+
+    // в сессии можно хранить любые объекты
+    List<int> list = context.sessionManager.SessionGetKey(context.session, "list", new List<int>());
+    list.Add(10);
+    context.sessionManager.SessionSetKey(ref context.session, "list", list);
+}
 ```
