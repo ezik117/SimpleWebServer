@@ -17,7 +17,7 @@
         <form method="POST" action="">
             <div class="form-row">
                 <div class="col">
-                    <input type="text" class="form-control" value="{{cmd}}" name="process">
+                    <input type="text" class="form-control" value="{{ cmd }}" name="process">
                 </div>
                 <div class="col">
                     <button type="submit" class="btn btn-primary" name="btnRun">RUN</button>
@@ -25,7 +25,7 @@
                 </div>
             </div>
         </form>
-        <div class="p-1 {%IF status%}text-success{%ELSE%}text-danger{%ENDIF%}">Status: {%IF status%} Running {%ELSE%} Not running {%ENDIF%}</div>
+        <div class="p-1 {% IF status %}text-success{% ELSE %}text-danger{% ENDIF %}">Status: {% IF status %} Running {% ELSE %} Not running {% ENDIF %}</div>
         <hr />
         <div class="bg-dark" id="output" style="height:400px; overflow: auto; font-family:'Lucida Console'; font-size:80%; color:lime;">
 

@@ -105,10 +105,17 @@ namespace WebServer
             return sessionData.TryRemove(sessionId, out SessionData temp);
         }
 
-        public void SessionSetKey(ref SessionData session, string key, string value)
+        public void SessionSetKey(ref SessionData session, string key, object value)
         {
             if (session == null) session = this.CreateSession();
             session.Set(key, value);
+        }
+
+        public object SessionGetKey(SessionData session, string key, object defaultValue = null)
+        {
+            if (session == null) return defaultValue;
+
+            return session.Get(key, defaultValue);
         }
 
         public void SessionDeleteKey(ref SessionData session, string key)

@@ -79,7 +79,7 @@ namespace WebServer
                         PrincipalContext ctx = new PrincipalContext(ContextType.Machine);
                         bool userExists = ctx.ValidateCredentials(context.GetParam("login"), context.GetParam("password"));
 
-                        if (userExists) context.session.Set("user", context.GetParam("login"));
+                        if (userExists) context.sessionManager.SessionSetKey(ref context.session, "user", context.GetParam("login"));
                     }
                     catch { };
                 }
@@ -91,7 +91,12 @@ namespace WebServer
         // Route: "/logout"
         public static ResponseContext Logout(RequestContext context)
         {
-            context.sessionManager.DeleteSession(context.session.sessionId);
+            // проверим не запущен ли процесс, и если да - завершим его
+            Process p = (Process)context.sessionManager.SessionGetKey(context.session, "process");
+            p?.Kill();
+            p = null;
+
+            context.sessionManager.SessionClear(ref context.session);
             return new ResponseContext("", "/");
         }
 
@@ -101,34 +106,35 @@ namespace WebServer
         public static ResponseContext Cmdline(RequestContext context)
         {
             // проверим доступ
-            if (context.session.GetString("user") == null)
+            if (context.sessionManager.SessionGetKey(context.session, "user") == null)
             {
-                // доступ запрещен
-                return new ResponseContext("", "", HttpStatusCode.Forbidden);
+                // пользователь неавторизован - редирект на главную страницу
+                return new ResponseContext("", "/");
             }
+
+            // глобальные переменные в сессии
+            Process p = (Process)context.sessionManager.SessionGetKey(context.session, "process");
+            string cmd = (string)context.sessionManager.SessionGetKey(context.session, "cmd", "cmd.exe");
 
             if (context.Method == RequestMethod.GET)
             {
-                // глобальные переменные в сессии
-                Process p = (Process)context.session.Get("process", null);
-
-                // переменные для шаблонизатора
+                // отобразим страницу
                 context.templateVariables.Add("status", (p == null ? false : (!p.HasExited ? true : false)));
-                context.templateVariables.Add("cmd", "cmd.exe");
+                context.templateVariables.Add("cmd", cmd);
 
                 TemplateParser tp = new TemplateParser();
-                tp.enableDebug = true;
                 return new ResponseContext(tp.ParseFromResource("cmdline.html", context.templateVariables));
             }
-                else if (context.Method == RequestMethod.POST)
+            else if (context.Method == RequestMethod.POST)
             {
                 if (context.parameters.ContainsKey("btnRun"))
                 {
                     // ЗАПРОС ЗАПУСКА КОМАНДЫ
-                    
-                    // глобальные переменные в сессии
-                    Process p = (Process)context.session.Get("process", null);
+
                     p?.Kill(); // завершим процесс, если был открыт
+
+                    cmd = context.GetParam("cmd", "cmd.exe");
+                    context.sessionManager.SessionSetKey(ref context.session, "cmd", cmd);
 
                     // запустим процесс в скрытом окне, перенаправим потоки Stdin и Stdout в наш обработчик
                     p = new Process();
@@ -136,7 +142,7 @@ namespace WebServer
                     p.StartInfo.RedirectStandardOutput = true;
                     p.StartInfo.RedirectStandardInput = true;
                     p.StartInfo.RedirectStandardError = true;
-                    //p.StartInfo.FileName = (string)req.values["process"];
+                    p.StartInfo.FileName = cmd;
                     p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
                     p.StartInfo.CreateNoWindow = true;
                     p.OutputDataReceived += P_OutputDataReceived;
@@ -152,7 +158,31 @@ namespace WebServer
                     {
                         p = null;
                     }
+
+                    context.sessionManager.SessionSetKey(ref context.session, "process", p);
+                    context.templateVariables.Add("status", (p == null ? false : (!p.HasExited ? true : false)));
+                    context.templateVariables.Add("cmd", cmd);
+
+                    TemplateParser tp = new TemplateParser();
+                    return new ResponseContext(tp.ParseFromResource("cmdline.html", context.templateVariables));
                 }
+                else if (context.parameters.ContainsKey("btnStop"))
+                {
+                    // ЗАПРОС ОСТАНОВА КОМАНДЫ
+
+                    p?.Kill();
+                    p = null;
+
+                    context.sessionManager.SessionSetKey(ref context.session, "process", p);
+                    context.templateVariables.Add("status", (p == null ? false : (!p.HasExited ? true : false)));
+                    context.templateVariables.Add("cmd", cmd);
+
+                    TemplateParser tp = new TemplateParser();
+                    return new ResponseContext(tp.ParseFromResource("cmdline.html", context.templateVariables));
+                }
+
+
+
             }
 
             return new ResponseContext("", "");
