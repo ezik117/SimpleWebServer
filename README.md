@@ -67,7 +67,7 @@ static class RouteFunctions
 
         TemplateParser tp = new TemplateParser();
         
-        return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{dateNow}}</BODY></HTML>", context.variables));
+        return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{ dateNow }}</BODY></HTML>", context.variables));
     }
 }
 
