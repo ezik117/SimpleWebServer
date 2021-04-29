@@ -2,7 +2,7 @@
 
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <meta charset="utf-8" />
+    <meta charset="windows-1251" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link href="/bootstrap.min.css" rel="stylesheet">
     <script src="jquery-3.6.0.min.js"></script>
@@ -15,7 +15,7 @@
     <div class="container">
         <h5>COMMAND TO EXECUTE:</h5>
         <form method="POST" action="">
-            <div class="form-row">
+            <div class="row">
                 <div class="col">
                     <input type="text" class="form-control" value="{{ cmd }}" name="process">
                 </div>
@@ -31,7 +31,7 @@
 
         </div>
         <div>
-            <input type="text" class="form-control bg-secondary text-light" id="sendCmd" name="command" style="font-family:'Lucida Console'" autocomplete="off" />
+            <input type="text" class="form-control bg-secondary text-light" id="sendCmd" name="command" style="font-family:'Lucida Console'" autocomplete="off" placeholder="type a command here and press Enter" />
         </div>
         <div class="d-none text-secondary" style="font-size: small;" id="waitOnIssueCommand">
             Sending command. Please wait...
@@ -51,7 +51,7 @@
                     else {
                         $("#waitOnIssueCommand").removeClass("d-none");
 
-                        $.post("/input", "cmd=" + $("#sendCmd").val(), function () {
+                        $.post("/input", "cmd=" + encodeURIComponent($("#sendCmd").val()), function () {
                             $("#sendCmd").val("");
                         })
                             .fail(function () {

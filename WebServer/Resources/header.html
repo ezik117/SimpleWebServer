@@ -1,6 +1,13 @@
 ﻿<div style="padding:5px; background-color:navy; display:table; width: 100%;">
+    <div style="display:table-cell;">
+        <span style="font-size:80%; color:darkgray;">User: &nbsp;{{ session['user'] }}</span>
+    </div>
+
     <h2 style="color:yellow; text-align:center; display:table-cell"><img src="Info-icon.png" />&nbsp;COMPUTER INFORMATION</h2>
 
+    <div style="display:table-cell; width:32px;">
+        <a href="/"><img style="cursor: pointer; padding-right:5px;" src="Home-icon.png" /></a>
+    </div>
     {% IF session['user'] == null %}
     <div style="display:table-cell; width:32px;">
         <img style="cursor: pointer;" onclick="showLogin()" src="Lock-Lock-icon.png" />
@@ -32,10 +39,13 @@
             </div>
         </div>
         <div style="display:none;" id="spinner">
-            <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
-                &nbsp;
+            <div style="width:100%; text-align:center;">Checking name...</div>
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+                    &nbsp;
+                </div>
             </div>
-        </div>
-    </form>
+            </div>
+</form>
 
    

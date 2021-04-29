@@ -9,13 +9,14 @@ namespace WebServer
         static void Main(string[] args)
         {
             WebServerV1 www = new WebServerV1();
-            www.responseCodePage = "windows-1251";
             www.staticContent = "..\\..\\StaticFiles";
             www.useEmbeddedResources = true;
             www.AddRoute("/", RouteFunctions.Index);
             www.AddRoute("/login", RouteFunctions.Login);
             www.AddRoute("/logout", RouteFunctions.Logout);
             www.AddRoute("/cmdline", RouteFunctions.Cmdline);
+            www.AddRoute("/output", RouteFunctions.Output);
+            www.AddRoute("/input", RouteFunctions.Input);
             www.AddRoute("/test", RouteFunctions.Test);
 
             Console.WriteLine("Ready... Press 'Q' to exit.");

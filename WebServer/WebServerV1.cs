@@ -136,7 +136,8 @@ namespace WebServer
             RequestContext rc = ParseRequest(request);
 
             // вначале проверяется не является ли запрошенный ресурс URL в таблице переходов
-            if (this.routeTable.ContainsKey(rc.Route) && request.Headers["Accept"].Contains("text/html"))
+            if (this.routeTable.ContainsKey(rc.Route) && 
+                 (request.Headers["Accept"].Contains("text/html") || request.Headers["Accept"].Contains("*/*")))
             {
                 // если да - запускаем парсер и возвращаем его ответ
                 ResponseContext userResponse = ProcessRoute(rc);

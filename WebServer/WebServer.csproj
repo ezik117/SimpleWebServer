@@ -93,5 +93,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\jquery-3.6.0.min.js" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Home-icon.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
