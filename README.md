@@ -42,7 +42,7 @@ public void AddRoute(string route, RouteFunction function) | Добавляет 
 
 ## ПРИМЕРЫ
 
-Создание сервера и базовой страницы:
+### Создание сервера и базовой страницы
 
 ```C#
 static void Main(string[] args)
@@ -70,5 +70,53 @@ static class RouteFunctions
         return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>Today is {{ dateNow }}</BODY></HTML>", context.variables));
     }
 }
+
+```
+
+### Получение данных из web-страницы
+
+```HTML
+<form method="POST" action="/person">
+  <input name="username">
+  <button type="submit">
+</form>
+
+<form method="GET">
+  <input name="gender">
+  <button type="submit">
+</form>
+```
+
+```C#
+static class RouteFunctions
+{
+    // Route: "/person"
+    public static ResponseContext Person(RequestContext context)
+    {
+        string login;
+        string gender;
+
+        if (context.Method == RequestMethod.POST)
+        {
+            if ((login = context.GetParam("login")) != "")
+            {
+                // some code here
+            }
+        }
+
+        if (context.Method == RequestMethod.GET)
+        {
+            if ((gender = context.GetParam("gender")) != "")
+            {
+                // some code here
+            }
+        }
+    }
+}
+```
+
+### Использование пользовательской сессии
+
+```C#
 
 ```
