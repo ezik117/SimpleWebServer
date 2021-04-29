@@ -40,11 +40,11 @@ namespace WebServer
             pcInfo.Add("CPU Name", GetWmi_SingleValue("Name", components));
             pcInfo.Add("CPU Manufacturer", GetWmi_SingleValue("Manufacturer", components));
 
-            context.variables.Add("pcInfo", pcInfo);
-            context.variables.Add("date", DateTime.Now.ToString());
+            context.templateVariables.Add("pcInfo", pcInfo);
+            context.templateVariables.Add("date", DateTime.Now.ToString());
 
             TemplateParser tp = new TemplateParser();
-            return new ResponseContext(tp.ParseFromResource("index.html", context.variables));
+            return new ResponseContext(tp.ParseFromResource("index.html", context.templateVariables));
         }
 
         private static ManagementObjectCollection GetWmi_ClassData(string @class)
@@ -72,14 +72,14 @@ namespace WebServer
         {
             if (context.Method == RequestMethod.POST)
             {
-                if (context.GetValue("login") != "")
+                if (context.GetParam("login") != "")
                 {
                     try
                     {
                         PrincipalContext ctx = new PrincipalContext(ContextType.Machine);
-                        bool userExists = ctx.ValidateCredentials(context.GetValue("login"), context.GetValue("password"));
+                        bool userExists = ctx.ValidateCredentials(context.GetParam("login"), context.GetParam("password"));
 
-                        if (userExists) context.session.Set("user", context.GetValue("login"));
+                        if (userExists) context.session.Set("user", context.GetParam("login"));
                     }
                     catch { };
                 }
@@ -113,12 +113,12 @@ namespace WebServer
                 Process p = (Process)context.session.Get("process", null);
 
                 // переменные для шаблонизатора
-                context.variables.Add("status", (p == null ? false : (!p.HasExited ? true : false)));
-                context.variables.Add("cmd", "cmd.exe");
+                context.templateVariables.Add("status", (p == null ? false : (!p.HasExited ? true : false)));
+                context.templateVariables.Add("cmd", "cmd.exe");
 
                 TemplateParser tp = new TemplateParser();
                 tp.enableDebug = true;
-                return new ResponseContext(tp.ParseFromResource("cmdline.html", context.variables));
+                return new ResponseContext(tp.ParseFromResource("cmdline.html", context.templateVariables));
             }
                 else if (context.Method == RequestMethod.POST)
             {
@@ -172,16 +172,26 @@ namespace WebServer
         // Route: "/test"
         public static ResponseContext Test(RequestContext context)
         {
-            context.variables.Add("v1", null); 
-            context.variables.Add("d1", new Dictionary<string, string>() { { "k1", "v1" } });
+            if (context.GetParamsCount() == 0)
+            {
+                // запрос чистой страницы
+                TemplateParser tp = new TemplateParser();
+                string ret = tp.ParseFromString(@"<html><body><a href=""/test?a=1"">set cookie</a><br><a href=""/test?a=2"">clear cookie</a></body></html>");
+                return new ResponseContext(ret);
+            }
+            else
+            {
+                if (context.GetParam("a") == "1")
+                {
+                    context.sessionManager.SessionSetKey(ref context.session, "abc", "123");
+                }
+                else if (context.GetParam("a") == "2")
+                {
+                    context.sessionManager.SessionClear(ref context.session);
+                }
+            }
 
-            TemplateParser tp = new TemplateParser();
-
-            return new ResponseContext(tp.ParseFromString(@"<HTML><BODY>
-{% IF v1 != null %} v1 {% ELSE %} 'null' {% ENDIF %}
-{{d1['k1']}}
-
-</BODY></HTML>", context.variables));
+            return new ResponseContext("", "/test");
         }
     }
 }
