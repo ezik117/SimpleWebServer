@@ -349,4 +349,6 @@ Dictionary<string, object> data = new Dictionary<string, object>()
 
 В качестве примера полноценного использования веб-сервера в данный проект включен функционал получения базовых данных о компьютере на базе запросов WMI, а также запуск и управление командной строкой CMD.EXE через веб-интерфейс. Для получения доступа к удаленной командной строке необходимо пройти авторизацию. Система использует либо логин и пароль любого из существующих на локальном компьютере пользователей, либо можно использовать встроенного пользователя "test" с паролем "1".
 
-![Sample of interface](https://github.com/ezik117/SimpleWebServer/blob/main/cmd_interface.png)
+![Sample of interface1](https://github.com/ezik117/SimpleWebServer/blob/main/cmd_interface.png)
+
+![Sample of interface2](https://github.com/ezik117/SimpleWebServer/blob/main/info_interface.png)
