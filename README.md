@@ -1,6 +1,6 @@
 # МНОГОПОТОЧНЫЙ ВЕБ (HTTP) СЕРВЕР С ШАБЛОНИЗАТОРОМ И ПОДДЕРЖКОЙ ПОЛЬЗОВАТЕЛЬСКИХ СЕССИЙ НА C#
 
-[English version](https://github.com/ezik117/SimpleWebServer/blob/main/README-EN.md)
+[English version](https://github.com/ezik117/SimpleWebServer/blob/main/README.en-US.md)
 
 ## ВВЕДЕНИЕ
 
