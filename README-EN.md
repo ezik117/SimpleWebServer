@@ -17,3 +17,4 @@ Here is a simple HTTP-server with template paserer based on slightly modified Ji
 
 The base class to run the web server. Listens to all incoming connections on 8080 port by default ("http://localhost:8080" prefix).
 
+.... translation is in progress, please be patient! ....
