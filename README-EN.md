@@ -11,7 +11,9 @@ Here is a simple HTTP-server with template paserer based on slightly modified Ji
 
 **WebServerV1** - this class is a heart of the system and contains all necessary methods for multithreaded processing and maintain the sessions. It uses a Route Table linked with **RouteFunctions** static methods to process HTTP requests.
 
-**RouteFunctions** - the class is a "working horse", it contains all user-definded methods to process HTTP requests.
+**RouteFunctions** - the class is a "working horse", it contains all user-defined methods to process HTTP requests.
 
 ## 'WebServerV1' CLASS
+
+The base class to run the web server. Listens to all incoming connections on 8080 port by default ("http://localhost:8080" prefix).
 
