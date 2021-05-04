@@ -266,6 +266,7 @@ string ParseFromResource(string resource, Dictionary<string, object> data = null
 
 *Синтаксис:*
 
+<!-- {% raw %} -->
 ```JINJA2
 {% IF <условие> %}
 блок вывода, если условие равно истине
@@ -273,6 +274,7 @@ string ParseFromResource(string resource, Dictionary<string, object> data = null
 блок кода, если условие не равно истине
 {% ENDIF %}
 ```
+<!-- {% endraw %} -->
 
 Операнды вычисления условия: && (логическое И), || (логическое ИЛИ), ! (логическое НЕ), < (меньше), <= (меньше или равно), > (больше), >= (больше или равно), == (равно), != (не равно).
 
