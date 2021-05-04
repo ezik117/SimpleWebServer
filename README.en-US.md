@@ -1,6 +1,6 @@
 # MULTITHREADED WEB (HTTP) SERVER WITH TEMPLATE PARSER AND USER'S SESSION SUPPORT ON C#
 
-[Russian version](https://github.com/ezik117/SimpleWebServer/blob/main/README.md)
+[Russian version](README.md)
 
 ## INTRODUCTION
 
@@ -16,5 +16,14 @@ Here is a simple HTTP-server with template paserer based on slightly modified Ji
 ## WebServerV1 CLASS
 
 The base class to run the web server. Listens to all incoming connections on 8080 port by default ("http://localhost:8080" prefix).
+
+In case the web server is used to accept requests on any of network interfaces, the following configuration is required:
+
+- initialize the server with prefix `prefix="http://+:8080/"`
+- add permission in the Windows command line `netsh http add urlacl url=http://+:8080/`
+
+Remark: to see current network permission use: `netsh http show urlacl`. To remove permission use: `netsh http delete urlacl url=http://+:8080/`
+
+> ATTENTION: This web server does not control hanged processing threads as well as does not control the number of running threads.
 
 .... translation is in progress, please be patient! ....
