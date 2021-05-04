@@ -266,9 +266,8 @@ string ParseFromResource(string resource, Dictionary<string, object> data = null
 
 *Синтаксис:*
 
-
-<!--{% raw %}-->`{% IF <условие> %}`<!--{% endraw %}-->
 ```JINJA
+{% IF условие %}
 блок вывода, если условие равно истине
 {% ELSE %}
 блок кода, если условие не равно истине
