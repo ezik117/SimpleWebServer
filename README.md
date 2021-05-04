@@ -1,6 +1,6 @@
 # МНОГОПОТОЧНЫЙ ВЕБ (HTTP) СЕРВЕР С ШАБЛОНИЗАТОРОМ И ПОДДЕРЖКОЙ ПОЛЬЗОВАТЕЛЬСКИХ СЕССИЙ НА C#
 
-[English version](https://github.com/ezik117/SimpleWebServer/blob/main/README.en-US.md)
+[English version](README.en-US.md)
 
 <!--{% raw %}-->
 
@@ -355,6 +355,6 @@ Dictionary<string, object> data = new Dictionary<string, object>()
 
 ![Sample of interface1](cmd_interface.png)
 
-![Sample of interface2](https://github.com/ezik117/SimpleWebServer/blob/main/info_interface.png)
+![Sample of interface2](info_interface.png)
 
 <!--{% endraw %}-->
