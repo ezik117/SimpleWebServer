@@ -266,8 +266,8 @@ string ParseFromResource(string resource, Dictionary<string, object> data = null
 
 *Синтаксис:*
 
-```JINJA
-{% IF условие %}
+```JINJA2
+{% IF <условие> %}
 блок вывода, если условие равно истине
 {% ELSE %}
 блок кода, если условие не равно истине
@@ -280,7 +280,7 @@ string ParseFromResource(string resource, Dictionary<string, object> data = null
 
 *Примеры:*
 
-```JINJA
+```JINJA2
 {% IF x == 10 %}
 {% IF x == null && y != true %}
 ```
