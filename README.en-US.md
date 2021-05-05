@@ -2,6 +2,8 @@
 
 [Russian version](README.md)
 
+<!--{% raw %}-->
+
 ## INTRODUCTION
 
 Here is a simple HTTP-server with template paserer based on slightly modified Jinja language syntax with user's session support on the server side. It intends for usage in small C# projects where the HTTP based interfaces is needed. Configuring the server is very simple and requires to set only a handful of parameters in the following classes:
@@ -222,5 +224,6 @@ The template language consists of *variables* and *commands*. The first are spec
 [opening escape sequence `{{` or `{%`] [optional left space control specifier] [space (s)] [command or variable] [space (s)] [optional right space control specifier] [closing escape sequence `}}` or `%}`]
 
 
-
 .... translation is in progress, please be patient! ....
+
+<!--{% endraw %}-->
