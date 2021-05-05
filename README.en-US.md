@@ -219,7 +219,7 @@ string ParseFromResource(string resource, Dictionary<string, object> data = null
 
 The template language consists of *variables* and *commands*. The first are specified through double curly braces `{{<variable name>}}`, the second through a combination of double brackets and percent sign `{% <command>%}`. The syntax for the template language control code is as follows:
 
-<opening escape sequence `{{` or `{%`> <optional left space control specifier> <space (s)> <command or variable> <space (s)> <optional right space control specifier> <closing escape sequence ` }} `or`%} `>
+[opening escape sequence `{{` or `{%`] [optional left space control specifier] [space (s)] [command or variable] [space (s)] [optional right space control specifier] [closing escape sequence `}}` or `%}`]
 
 
 
