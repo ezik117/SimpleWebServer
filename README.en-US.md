@@ -192,7 +192,7 @@ public static ResponseContext Page1(RequestContext context)
 }
 ```
 
-### 4.4. Page redirection and http error templates
+### 4.4. Page redirection and http error handling
 
 ```C#
 // this line will return an empty response to the client's browser with a redirect
