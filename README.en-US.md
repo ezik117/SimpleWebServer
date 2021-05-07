@@ -6,10 +6,10 @@
 
 ## 1. INTRODUCTION
 
-Here is a simple HTTP-server with [template paserer](#5.-TemplateParser-CLASS) based on slightly modified Jinja language syntax with [user's session support](#4.3.-Using-a-user-session) on the server side. It intends for usage in small C# projects where the HTTP based interfaces is needed. Configuring the server is very simple and requires to set only a handful of parameters in the following classes:
+Here is a simple HTTP-server with [template paserer](#5-templateparser-class) based on slightly modified Jinja language syntax with [user's session support](#43-using-a-user-session) on the server side. It intends for usage in small C# projects where the HTTP based interfaces is needed. Configuring the server is very simple and requires to set only a handful of parameters in the following classes:
 
-- [WebServerV1](#2.-WebServerV1-CLASS)
-- [RouteFunctions](#3.-RouteFunctions-CLASS)
+- [WebServerV1](#2-webserverv1-class)
+- [RouteFunctions](#3-routefunctions-class)
 
 **WebServerV1** - this class is a heart of the system and contains all necessary methods for multithreaded processing and maintain the sessions. It uses a Route Table linked with **RouteFunctions** static methods to process HTTP requests.
 
