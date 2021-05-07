@@ -223,7 +223,137 @@ The template language consists of *variables* and *commands*. The first are spec
 
 [opening escape sequence `{{` or `{%`] [optional left space control specifier] [space (s)] [command or variable] [space (s)] [optional right space control specifier] [closing escape sequence `}}` or `%}`]
 
+#### SPACE CONTROL SPECIFICATORS
 
-.... translation is in progress, please be patient! ....
+Space control specifiers can be added to the escape sequence as needed.
+
+`-` (minus). Trim all spaces and line breaks '\r\n' from the left or right of the escape sequence. For example: `{{- x}}` - remove from the left, `{{x -}}` - remove from the right, `{{- x -}}` - remove from both sides.
+
+#### VARIABLES AND EXPRESSIONS
+
+Variables can be passed from an external dictionary or created inside the {{}} block, in the last case they will be variables in the internal dictionary. The template engine uses two types of variable dictionary: external and internal. The external dictionary is optionally passed when creating the **TemplateParser** class or calling **ParseFrom** methods. The internal dictionary is used when values is assigned ​​to variables as a result of executing code in the {{}} tags or when creating a loop variable. In the process of searching for a variable in dictionaries, the variable is first searched for in the internal dictionary, then in the external one.
+
+```JINJA
+VARIABLES:
+{{ login }} -- will display the variable 'login' from the external dictionary if the external dictionary contains the definition of 'login'.
+{{ x=10 }} -- will display nothing but will create if it did not exist and assign the internal variable "x" the value 10.
+{{ arr[0] }} -- will return the value at index zero from the array. If the array does not exist, it will return null. If the index is out of range, it will return an error.
+{{ dict['keyname'] }} -- will return the value from the dictionary with the key 'keyname'. If the dictionary does not exist or the key value does not exist, it will return null.
+{{ class.property }} -- will return the value of the 'property' field from the class 'class'. If the class does not exist, it will return null. If the field does not exist, it will return an error.
+{{ class.property.array[4].field }} -- support for complex variables.
+
+CONSTANTS:
+{{ 20 }} {{ 'hello' }} -- will display constants 20 and 'hello' (without quotes). NOTE: all strings must be in single quotes.
+{{ ''hello'' }} -- will display 'hello' (in quotes).
+
+EXPRESSIONS:
+{{ (-1 * (45+18)/2 + (4^3)- 18 / (3 * 4)) / -256.5 }} -- will calculate and output the result -0.1208577.
+{{ x + 30 }} -- will calculate the value of the variable "x" and perform the addition. The result is 40 if x = 10.
+{{ 'hello' + ' ' + 'world!' }} -- will perform string concatenation. The result is 'hello world!' without quotes.
+{{ 'x= ' + x }} -- will calculate the value "x" and concatenate with the string. The result is "x = 10" if x = 10.
+{{ y = x }} -- will assign to variable "y" the value of variable "x".
+{{ z = true }} -- set the value of the variable "z" to true. NOTE: Supported keywords are 'true', 'false', 'null'.
+```
+
+The following operators are supported in expressions: ^ (exponentiation), * (multiplication), / (division), + (addition), - (subtraction),% (modulo), () (parentheses to increase the priority of operations).
+
+>*Note. When adding numbers and strings, a situation may arise where the numbers are not calculated properly. For example, in the expression {{'x =' + x + x}}, the output will be "x = 1010", not "x = 20". This is because the calculation process goes from left to right, if the first operand is text, then the second will be added in the string concatenation mode, and not as a result of arithmetic. In order for the arithmetic action to be performed first, the priority of the operations must be increased using parentheses. Thus, to get "x = 20", you need to call the expression {{'x =' + (x + x)}}*.
+
+#### COMMANDS
+
+All commands are case sensitive and written in capital letters.
+
+##### CONDITIONS
+
+*Syntax:*
+
+```JINJA2
+{% IF <условие> %}
+block of code if condition is true
+{% ELSE %}
+block of code if condition is not true
+{% ENDIF %}
+```
+
+Logical operands: `&&` (logical AND), `||` (logical OR), `!` (logical NOT), `<` (less than), `<=` (less than or equal), `>` (greater than), `>=` (greater than or equal), `==` (equal), `!=` (not equal).
+
+>*Note. Values are not automatically cast to boolean expressions, except for boolean values. Therefore, one of the comparison operands must be used. For example: {{x = 1}} {{y = true}} {% IF x%} <- will cause an error, {% IF y%} <- there will be no error.*
+
+*Examples:*
+
+```JINJA2
+{% IF x == 10 %}
+{% IF x == null && y != true %}
+```
+
+##### LOOPS
+
+*Syntax:*
+
+```JINJA
+{% FOR <loop_variable> IN <array_variable | RANGE(<start>, <end> [,<step>])> %}
+output block
+{% BREAKIF <condition> %}
+{% ENDFOR %}
+```
+
+Loops can be either enumerated over numbers or over collections with type **IEnumerable**.
+
+>*Note. After exiting the loop, the loop variable is available in the internal dictionary with the last value.*
+
+*Examples:*
+
+```JINJA2
+{% FOR row IN rows %} -- will iterate over all `row` values in an array or list or dictionary `rows`.
+{% FOR i IN RANGE(1, 5) %} -- will iterate over numbers from 1 to 4 in increments of 1.
+{% FOR i IN RANGE(1, x, 2) %} -- will iterate over the numbers from 1 to the value in the variable "x" in increments of 2.
+{% BREAKIF x == 4 %} -- perform an abnormal exit from the loop if the "x" value is 4.
+{% BREAKIF true %} -- unconditional interruption of the cycle.
+```
+
+#### EXAMPLE
+
+```C#
+// create a dictionary with data
+Dictionary<string, object> data = new Dictionary<string, object>()
+{
+    { "year", 2020 },
+    { "text", "Hello world!" },
+};
+````
+
+```HTML
+// template
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="UTF-8">
+        <style>
+            .bluetext {
+                color: blue;
+            }
+            .redtext {
+                color: red;
+            }
+        </style>
+    </head>
+    <body>
+        {{ rows = 5 }}
+        {% FOR i IN RANGE(1, rows) %}
+            <p class=""{% IF i % 2 == 0 %}bluetext{% ELSE %}redtext{% ENDIF %}"">
+            {{  i + '  &copy;' + year + '. ' + text }}
+            </p>
+        {% ENDFOR %}
+    </body>
+</html>
+```
+
+## EXAMPLE OF USE
+
+As an example of the full-fledged use of a web server, this project includes the functionality of obtaining basic data about a computer based on WMI queries, as well as launching and managing the CMD.EXE command line through the web interface. You must be authorized to access the remote command line. The system uses either the login and password of any of the existing users on the local computer, or you can use the built-in user "test" with the password "1".
+
+![Sample of interface1](cmd_interface.png)
+
+![Sample of interface2](info_interface.png)
 
 <!--{% endraw %}-->
