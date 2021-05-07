@@ -4,7 +4,7 @@
 
 <!--{% raw %}-->
 
-## INTRODUCTION
+## 1. INTRODUCTION
 
 Here is a simple HTTP-server with template paserer based on slightly modified Jinja language syntax with user's session support on the server side. It intends for usage in small C# projects where the HTTP based interfaces is needed. Configuring the server is very simple and requires to set only a handful of parameters in the following classes:
 
@@ -15,7 +15,7 @@ Here is a simple HTTP-server with template paserer based on slightly modified Ji
 
 **RouteFunctions** - the class is a "working horse", it contains all user-defined methods to process HTTP requests.
 
-## WebServerV1 CLASS
+## 2. WebServerV1 CLASS
 
 The base class to run the web server. Listens to all incoming connections on 8080 port by default ("http://localhost:8080" prefix).
 
@@ -28,7 +28,7 @@ Remark: to see current network permission use: `netsh http show urlacl`. To remo
 
 > ATTENTION: This web server does not control hanged processing threads as well as does not control the number of running threads.
 
-### PROPERTIES
+### 2.1. PROPERTIES
 
 Name | Type | Description
 ---- | ---- | -----------
@@ -36,7 +36,7 @@ responseCodePage | string | The code page name of the returned string `ResponseC
 staticContent | string | Specifies the location of static content if it is external, i.e. pictures, css files, etc. if they are stored in files, and are not an embedded resource (EmbeddedResource). Supports relative paths like (".. \\ .. \\"). The default value is the current directory.
 useEmbeddedResources | bool | Shows where to get the static files. If set to True, then for all file requests (except for HTML pages that are processed in route functions, where the path to templates is directly specified) objects will be searched in Embedded Resources. If False, then files are searched in the staticContent directory. The default value is False.
 
-### METHODS
+### 2.2. METHODS
 
 Full declaration | Description
 ---------------- | --------
@@ -44,13 +44,13 @@ void WebServerV1(string prefix = "http://localhost:8080/") | Constructor. Launch
 void Stop() | Shuts down the server gracefully. It is possible to terminate the program without calling this method.
 public void AddRoute(string route, RouteFunction function) | Adds a route function to the route table.
 
-## RouteFunctions CLASS
+## 3. RouteFunctions CLASS
 
 Static class containing static methods executed if the requested address matches the specified route in the routing table of the **WebServerV1** class. The class and its methods can be dynamic, but then it must be initialized before adding the methods to the routing table.
 
 All methods of the class must meet to the definition of the delegate `public delegate ResponseContext RouteFunction (RequestContext context)` of the **WebServerV1** class.
 
-### REQUEST CONTEXT
+### 3.1. REQUEST CONTEXT
 
 The variable **context** of the **SessionData** class containing the context of the request is passed to the route function for handling the request from the client. The properties and methods of this variable are given below:
 
@@ -69,7 +69,7 @@ Full declaration code | Description
 public string GetParam(string name, string defaultValue = "") | Returns the value of the parameter received via GET / POST. This method is preferable than direct access to the values dictionary.
 public int GetParamsCount() | Returns the number of HTTP parameters in the request.
 
-### RESPONSE CONTEXT
+### 3.2. RESPONSE CONTEXT
 
 The route function must return an object of class **ResponseContext** declared as `public ResponseContext (string responseString =" ", string redirectUrl =" ", HttpStatusCode exitCode = HttpStatusCode.OK)`, where:
 
@@ -77,9 +77,9 @@ The route function must return an object of class **ResponseContext** declared a
 - **redirectUrl** - redirect string. By default it equals to an empty string and can be omitted in response. If it is not equal to an empty string, then it triggers a server response telling the client that the resource has been moved and it is necessary to go to another page. This kind of the redirect uses the client to redirect to another page or web resource. If you need to use the execution of another route function from processing one, then it must be called directly from the code. At the same time, do not forget that if a Request object from the original function is passed to another route function, then it will contain all the parameters of the current request. If the parameters are changed, they must be manually altered through the **parameters** property of the **SessionData** object.
 - **exitCode** - server response code to the client. The default is 200 - OK. May be omitted.
 
-## EXAMPLES
+## 4. EXAMPLES
 
-### Creating a server and a test page
+### 4.1. Creating a server and a test page
 
 ```C#
 static void Main(string[] args)
@@ -110,7 +110,7 @@ static class RouteFunctions
 
 ```
 
-### Retrieving data from a web page
+### 4.2. Retrieving data from a web page
 
 ```HTML
 <form method="POST" action="/person">
@@ -152,7 +152,7 @@ static class RouteFunctions
 }
 ```
 
-### Using a user session
+### 4.3. Using a user session
 
 ```C#
 // Route: "/logon"
@@ -192,7 +192,7 @@ public static ResponseContext Page1(RequestContext context)
 }
 ```
 
-### Page redirection and http error templates
+### 4.4. Page redirection and http error templates
 
 ```C#
 // this line will return an empty response to the client's browser with a redirect
@@ -204,12 +204,12 @@ return new ResponseContext("", "/newpage");
 return new ResponseContext("Page is not found", "", HttpStatusCode.NotFound);
 ```
 
-## TemplateParser CLASS
+## 5. TemplateParser CLASS
 
 Template generator class. Parses an input pattern passed either as a string or file.
 During the development of the class, the Jinja language was taken as a basis.
 
-### METHODS
+### 5.1. METHODS
 
 Full declaration code | Description
 --------------------- | -----------
@@ -217,19 +217,19 @@ string ParseFromString(string template, Dictionary<string, object> data = null, 
 string ParseFromFile(string filename, Dictionary<string, object> data = null, Encoding encoding = null) | Returns the parsed text of the template from a file.
 string ParseFromResource(string resource, Dictionary<string, object> data = null) | Returns the parsed text of the template from an embedded resource of assembly.
 
-### LANGUAGE OF TEMPLATES
+### 5.2. LANGUAGE OF TEMPLATES
 
 The template language consists of *variables* and *commands*. The first are specified through double curly braces `{{<variable name>}}`, the second through a combination of double brackets and percent sign `{% <command>%}`. The syntax for the template language control code is as follows:
 
 [opening escape sequence `{{` or `{%`] [optional left space control specifier] [space (s)] [command or variable] [space (s)] [optional right space control specifier] [closing escape sequence `}}` or `%}`]
 
-#### SPACE CONTROL SPECIFICATORS
+#### 5.2.1. SPACE CONTROL SPECIFICATORS
 
 Space control specifiers can be added to the escape sequence as needed.
 
 `-` (minus). Trim all spaces and line breaks '\r\n' from the left or right of the escape sequence. For example: `{{- x}}` - remove from the left, `{{x -}}` - remove from the right, `{{- x -}}` - remove from both sides.
 
-#### VARIABLES AND EXPRESSIONS
+#### 5.2.2. VARIABLES AND EXPRESSIONS
 
 Variables can be passed from an external dictionary or created inside the {{}} block, in the last case they will be variables in the internal dictionary. The template engine uses two types of variable dictionary: external and internal. The external dictionary is optionally passed when creating the **TemplateParser** class or calling **ParseFrom** methods. The internal dictionary is used when values is assigned ​​to variables as a result of executing code in the {{}} tags or when creating a loop variable. In the process of searching for a variable in dictionaries, the variable is first searched for in the internal dictionary, then in the external one.
 
@@ -259,11 +259,11 @@ The following operators are supported in expressions: ^ (exponentiation), * (mul
 
 >*Note. When adding numbers and strings, a situation may arise where the numbers are not calculated properly. For example, in the expression {{'x =' + x + x}}, the output will be "x = 1010", not "x = 20". This is because the calculation process goes from left to right, if the first operand is text, then the second will be added in the string concatenation mode, and not as a result of arithmetic. In order for the arithmetic action to be performed first, the priority of the operations must be increased using parentheses. Thus, to get "x = 20", you need to call the expression {{'x =' + (x + x)}}*.
 
-#### COMMANDS
+#### 5.3. COMMANDS
 
 All commands are case sensitive and written in capital letters.
 
-##### CONDITIONS
+##### 5.3.1. CONDITIONS
 
 *Syntax:*
 
@@ -286,7 +286,7 @@ Logical operands: `&&` (logical AND), `||` (logical OR), `!` (logical NOT), `<` 
 {% IF x == null && y != true %}
 ```
 
-##### LOOPS
+##### 5.3.2. LOOPS
 
 *Syntax:*
 
@@ -311,7 +311,7 @@ Loops can be either enumerated over numbers or over collections with type **IEnu
 {% BREAKIF true %} -- unconditional interruption of the cycle.
 ```
 
-#### EXAMPLE
+#### 5.4. EXAMPLE
 
 ```C#
 // create a dictionary with data
@@ -348,7 +348,7 @@ Dictionary<string, object> data = new Dictionary<string, object>()
 </html>
 ```
 
-## EXAMPLE OF USE
+## 6. EXAMPLE OF USE
 
 As an example of the full-fledged use of a web server, this project includes the functionality of obtaining basic data about a computer based on WMI queries, as well as launching and managing the CMD.EXE command line through the web interface. You must be authorized to access the remote command line. The system uses either the login and password of any of the existing users on the local computer, or you can use the built-in user "test" with the password "1".
 
