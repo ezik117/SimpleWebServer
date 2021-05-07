@@ -219,7 +219,7 @@ string ParseFromResource(string resource, Dictionary<string, object> data = null
 
 ### 5.2. LANGUAGE OF TEMPLATES
 
-The template language consists of *variables* and *commands*. The first are specified through double curly braces `{{<variable name>}}`, the second through a combination of double brackets and percent sign `{% <command>%}`. The syntax for the template language control code is as follows:
+The template language consists of *variables* and *commands*. The first are specified through double curly braces `{{ <variable name> }}`, the second through a combination of double brackets and percent sign `{% <command> %}`. The syntax for the template language control code is as follows:
 
 [opening escape sequence `{{` or `{%`] [optional left space control specifier] [space (s)] [command or variable] [space (s)] [optional right space control specifier] [closing escape sequence `}}` or `%}`]
 
@@ -227,7 +227,7 @@ The template language consists of *variables* and *commands*. The first are spec
 
 Space control specifiers can be added to the escape sequence as needed.
 
-`-` (minus). Trim all spaces and line breaks '\r\n' from the left or right of the escape sequence. For example: `{{- x}}` - remove from the left, `{{x -}}` - remove from the right, `{{- x -}}` - remove from both sides.
+`-` (minus). Trim all spaces and line breaks '\r\n' from the left or right of the escape sequence. For example: `{{- x }}` - remove from the left, `{{ x -}}` - remove from the right, `{{- x -}}` - remove from both sides.
 
 #### 5.2.2. VARIABLES AND EXPRESSIONS
 
@@ -268,7 +268,7 @@ All commands are case sensitive and written in capital letters.
 *Syntax:*
 
 ```JINJA2
-{% IF <условие> %}
+{% IF <condition> %}
 block of code if condition is true
 {% ELSE %}
 block of code if condition is not true
