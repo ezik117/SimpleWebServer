@@ -4,8 +4,6 @@
 
 <!--{% raw %}-->
 
-<meta name="google-site-verification" content="gn4Dy3rwkwIw6rONoxXw5cXOY3iANk87bKR-PuQP6EA" />
-
 ## 1. INTRODUCTION
 
 Here is a simple HTTP-server with [template paserer](#5-templateparser-class) based on slightly modified Jinja language syntax with [user's session support](#43-using-a-user-session) on the server side. It intends for usage in small C# projects where the HTTP based interfaces is needed. Configuring the server is very simple and requires to set only a handful of parameters in the following classes:
